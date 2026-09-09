@@ -20,6 +20,7 @@ export async function ingest(sourceId: string, event: InputEvent) {
   try {
     if (event.type === 'message.created') await ingestMessage(sourceId, event);
     else if (event.type === 'test.completed') await ingestTest(sourceId, event);
+    else if (event.type === 'test.analysis.updated') await ingestTestAnalysis(sourceId, event);
     else if (event.type === 'matchmaking.profile.completed') await ingestMatchProfile(sourceId, event);
     else throw new Error(`Unsupported event type: ${event.type}`);
     await db.update(ingestionEvents).set({ processingStatus: 'processed' }).where(eq(ingestionEvents.id, eventRowId));
@@ -46,6 +47,11 @@ function validateEvent(event: InputEvent) {
     requiredString(p.testKey, 'payload.testKey');
     requiredIdentity(asRecord(p.profile));
     validateAnswers(p.answers);
+    return;
+  }
+  if (event.type === 'test.analysis.updated') {
+    requiredString(p.attemptId, 'payload.attemptId');
+    requiredString(p.aiAnalysis, 'payload.aiAnalysis');
     return;
   }
   if (event.type === 'matchmaking.profile.completed') {
@@ -81,6 +87,12 @@ async function ingestTest(sourceId: string, event: InputEvent) {
   await db.insert(testAttempts).values({ id, sourceId, contactId, externalAttemptId: requiredString(p.attemptId, 'payload.attemptId'), testKey: requiredString(p.testKey, 'payload.testKey'), trackingCode: optionalString(p.trackingCode), profile: asRecord(p.profile), scores: numberRecord(p.scores), result: asRecord(p.result), aiAnalysis: optionalString(p.aiAnalysis), startedAt: optionalDate(p.startedAt), completedAt: asDate(event.occurredAt) });
   const answers = Array.isArray(p.answers) ? p.answers : [];
   for (let i = 0; i < answers.length; i++) { const a = asRecord(answers[i]); await db.insert(testAnswers).values({ id: crypto.randomUUID(), attemptId: id, position: i + 1, questionKey: optionalString(a.questionKey), questionText: requiredString(a.questionText, `answers[${i}].questionText`), answerValue: stringifyValue(a.value), answerLabel: optionalString(a.label), score: optionalNumber(a.score), metadata: asRecord(a.metadata) }); }
+}
+
+async function ingestTestAnalysis(sourceId: string, event: InputEvent) {
+  const db = getDb(); const p = event.payload; const attemptId = requiredString(p.attemptId, 'payload.attemptId');
+  const result = await db.update(testAttempts).set({ aiAnalysis: requiredString(p.aiAnalysis, 'payload.aiAnalysis') }).where(and(eq(testAttempts.sourceId, sourceId), eq(testAttempts.externalAttemptId, attemptId))).returning({ id: testAttempts.id });
+  if (!result.length) throw new Error('Test attempt not found');
 }
 
 async function ingestMatchProfile(sourceId: string, event: InputEvent) {
