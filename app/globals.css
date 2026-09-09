@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@theme inline {
+  --font-sans: Tahoma, Arial, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+}
+
+:root {
+  --background: #f5f7f6;
+  --foreground: #17201d;
+  --card: #ffffff;
+  --card-foreground: #17201d;
+  --primary: #176b52;
+  --primary-foreground: #ffffff;
+  --muted: #edf2ef;
+  --muted-foreground: #66736e;
+  --border: #dfe7e3;
+  --accent: #e4f3ed;
+  --accent-foreground: #12523f;
+  --radius: 0.8rem;
+}
+
+* { box-sizing: border-box; border-color: var(--border); }
+html { background: var(--background); }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Tahoma, Arial, sans-serif; }
+button, input, select, textarea { font: inherit; }
+::selection { background: #bfe5d7; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise { animation: rise .45s ease-out both; }
