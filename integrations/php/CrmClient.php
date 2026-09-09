@@ -14,9 +14,9 @@ final class CrmClient
         string $apiKey,
         int $timeoutSeconds = 2
     ) {
-        $this->baseUrl = $baseUrl;
-        $this->source = $source;
-        $this->apiKey = $apiKey;
+        $this->baseUrl = rtrim(trim($baseUrl), '/');
+        $this->source = trim($source);
+        $this->apiKey = trim($apiKey);
         $this->timeoutSeconds = $timeoutSeconds;
     }
 
@@ -37,7 +37,7 @@ final class CrmClient
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($body === false) return false;
 
-        $curl = curl_init(rtrim($this->baseUrl, '/') . '/api/v1/events');
+        $curl = curl_init($this->baseUrl . '/api/v1/events');
         curl_setopt_array($curl, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $body,

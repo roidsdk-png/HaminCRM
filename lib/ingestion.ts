@@ -13,6 +13,7 @@ export async function authenticateSource(slug: string, key: string) {
 }
 
 export async function ingest(sourceId: string, event: InputEvent) {
+  validateEvent(event);
   const db = getDb(); const eventRowId = crypto.randomUUID();
   const inserted = await db.insert(ingestionEvents).values({ id: eventRowId, sourceId, externalEventId: event.eventId, type: event.type, payload: event.payload, occurredAt: asDate(event.occurredAt) }).onConflictDoNothing().returning({ id: ingestionEvents.id });
   if (!inserted.length) return 'duplicate' as const;
@@ -28,6 +29,43 @@ export async function ingest(sourceId: string, event: InputEvent) {
     await db.update(ingestionEvents).set({ processingStatus: 'failed', processingError: error instanceof Error ? error.message : 'Unknown error' }).where(eq(ingestionEvents.id, eventRowId));
     throw error;
   }
+}
+
+function validateEvent(event: InputEvent) {
+  asDate(event.occurredAt);
+  const p = event.payload;
+  if (event.type === 'message.created') {
+    requiredString(p.sessionId, 'payload.sessionId');
+    requiredIdentity(p);
+    role(p.role);
+    requiredString(p.content, 'payload.content');
+    return;
+  }
+  if (event.type === 'test.completed') {
+    requiredString(p.attemptId, 'payload.attemptId');
+    requiredString(p.testKey, 'payload.testKey');
+    requiredIdentity(asRecord(p.profile));
+    validateAnswers(p.answers);
+    return;
+  }
+  if (event.type === 'matchmaking.profile.completed') {
+    requiredString(p.profileId, 'payload.profileId');
+    requiredIdentity(asRecord(p.profile));
+    validateAnswers(p.answers);
+    return;
+  }
+  throw new Error(`Unsupported event type: ${event.type}`);
+}
+
+function requiredIdentity(p: AnyRecord) {
+  if (!optionalString(p.userId) && !optionalString(p.externalUserId) && !optionalString(p.anonymousId) && !optionalString(p.ipHash) && !optionalString(p.phone)) {
+    throw new Error('A userId, externalUserId, anonymousId, ipHash, or phone is required');
+  }
+}
+
+function validateAnswers(value: unknown) {
+  if (!Array.isArray(value)) throw new Error('payload.answers must be an array');
+  for (let i = 0; i < value.length; i++) requiredString(asRecord(value[i]).questionText, `answers[${i}].questionText`);
 }
 
 async function ingestMessage(sourceId: string, event: InputEvent) {
@@ -53,11 +91,13 @@ async function ingestMatchProfile(sourceId: string, event: InputEvent) {
 }
 
 async function resolveContact(sourceId: string, p: AnyRecord) {
-  const db = getDb(); const external = optionalString(p.userId) ?? optionalString(p.externalUserId); const anonymous = optionalString(p.anonymousId); const ipHash = optionalString(p.ipHash); let found;
+  const db = getDb(); const external = optionalString(p.userId) ?? optionalString(p.externalUserId); const anonymous = optionalString(p.anonymousId); const ipHash = optionalString(p.ipHash); const phone = optionalString(p.phone); let found;
   if (external) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.externalUserId, external))).limit(1);
   else if (anonymous) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.anonymousId, anonymous))).limit(1);
+  else if (phone) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.phone, phone))).limit(1);
+  else if (ipHash) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.ipHash, ipHash))).limit(1);
   if (found) { await db.update(contacts).set({ lastSeenAt: new Date(), name: optionalString(p.name) ?? found.name, phone: optionalString(p.phone) ?? found.phone, province: optionalString(p.province) ?? found.province, city: optionalString(p.city) ?? found.city, gender: optionalString(p.gender) ?? found.gender, age: optionalNumber(p.age) ?? found.age, education: optionalString(p.education) ?? found.education, updatedAt: new Date() }).where(eq(contacts.id, found.id)); return found.id; }
-  const id = crypto.randomUUID(); await db.insert(contacts).values({ id, sourceId, externalUserId: external, anonymousId: anonymous, ipHash, name: optionalString(p.name), phone: optionalString(p.phone), province: optionalString(p.province), city: optionalString(p.city), gender: optionalString(p.gender), age: optionalNumber(p.age), education: optionalString(p.education), metadata: asRecord(p.metadata) }); return id;
+  const id = crypto.randomUUID(); await db.insert(contacts).values({ id, sourceId, externalUserId: external, anonymousId: anonymous, ipHash, name: optionalString(p.name), phone, province: optionalString(p.province), city: optionalString(p.city), gender: optionalString(p.gender), age: optionalNumber(p.age), education: optionalString(p.education), metadata: asRecord(p.metadata) }); return id;
 }
 
 export async function sha256(value: string) { const bytes = new TextEncoder().encode(value); return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))).map((byte) => byte.toString(16).padStart(2, '0')).join(''); }

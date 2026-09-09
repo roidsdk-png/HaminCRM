@@ -4,7 +4,7 @@
 
 ## نگاشت منابع فعلی
 
-- مشاور بله (`/opt/moshaver-eita/bot.php`): نمونه `examples/bale-advisor.php`
+- مشاور بله (`/opt/moshaver-eita/bot.php`): رابط اختصاصی `php/BaleAdvisorReporter.php`، نمونه `examples/bale-advisor.php` و برنامه نصب `BALE_ADVISOR_PLAN.md`
 - مشاور ایتا و سه آزمون وب: `php/CrmClient.php` از داخل `api.php` سمت سرور
 - ربات ازدواج (`/opt/matchhamin-bot/bot.py`): نمونه `examples/matchhamin.py`
 

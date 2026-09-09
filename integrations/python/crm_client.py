@@ -14,9 +14,10 @@ from typing import Any
 
 class CrmClient:
     def __init__(self, base_url: str, source: str, api_key: str, timeout: float = 2.0) -> None:
-        self.url = base_url.rstrip("/") + "/api/v1/events"
-        self.source = source
-        self.api_key = api_key
+        clean_base_url = base_url.strip().rstrip("/")
+        self.url = clean_base_url + "/api/v1/events" if clean_base_url else ""
+        self.source = source.strip()
+        self.api_key = api_key.strip()
         self.timeout = timeout
         self._queue: queue.Queue[dict[str, Any]] = queue.Queue(maxsize=2000)
         self._worker = threading.Thread(target=self._run, name="crm-sender", daemon=True)
@@ -62,4 +63,3 @@ class CrmClient:
                 if attempt == 2:
                     raise
                 time.sleep(0.25 * (2**attempt))
-
