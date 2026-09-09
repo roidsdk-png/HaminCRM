@@ -1,6 +1,7 @@
 import { Activity, Bot, ChevronLeft, ClipboardCheck, Database, HeartHandshake, LayoutDashboard, MessageSquareText, Search, Settings, ShieldCheck, Users } from 'lucide-react';
 import { getDashboardData } from '@/lib/dashboard-data';
 import { chatGPTSignInPath, getChatGPTUser } from '@/app/chatgpt-auth';
+import Link from 'next/link';
 
 const sourceCatalog = [
   { slug: 'bale-advisor', name: 'مشاور هوشمند بله', platform: 'بله', kind: 'گفتگو', icon: Bot },
@@ -25,11 +26,11 @@ export default async function Home() {
           <div><p className="text-lg font-bold">مرکز حامین</p><p className="text-xs text-white/55">سامانه مدیریت یکپارچه</p></div>
         </div>
         <nav className="space-y-1 text-sm">
-          <NavItem active icon={LayoutDashboard} label="نمای کلی" /><NavItem icon={Users} label="کاربران" />
-          <NavItem icon={MessageSquareText} label="گفتگوها" /><NavItem icon={ClipboardCheck} label="آزمون‌ها" />
-          <NavItem icon={HeartHandshake} label="همسان‌گزینی" /><NavItem icon={Activity} label="گزارش‌ها" />
+          <NavItem active icon={LayoutDashboard} label="نمای کلی" href="/" /><NavItem icon={Users} label="کاربران" href="/users" />
+          <NavItem icon={MessageSquareText} label="گفتگوها" href="/conversations" /><NavItem icon={ClipboardCheck} label="آزمون‌ها" href="/tests" />
+          <NavItem icon={HeartHandshake} label="همسان‌گزینی" href="/matchmaking" /><NavItem icon={Activity} label="گزارش‌ها" href="/reports" />
         </nav>
-        <div className="mt-auto border-t border-white/10 pt-5"><NavItem icon={Settings} label="تنظیمات منابع" /></div>
+        <div className="mt-auto border-t border-white/10 pt-5"><NavItem icon={Settings} label="تنظیمات منابع" href="/sources" /></div>
       </aside>
 
       <section className="min-w-0">
@@ -83,6 +84,6 @@ function SignIn() {
   return <main className="grid min-h-screen place-items-center bg-[#102f27] p-6"><section className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl shadow-black/20"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#d7f16b] text-[#17382e]"><Database size={26} /></div><h1 className="mt-6 text-2xl font-bold">مرکز مدیریت حامین</h1><p className="mt-3 text-sm leading-7 text-[#68756f]">برای مشاهده اطلاعات کاربران، گفتگوها و آزمون‌ها با حساب مجاز وارد شوید.</p><a href={chatGPTSignInPath('/')} className="mt-7 block rounded-xl bg-[#176b52] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#11533f]">ورود امن به سامانه</a><div className="mt-5 flex items-center justify-center gap-2 text-xs text-[#89938f]"><ShieldCheck size={15} /><span>اطلاعات فقط برای مدیران مجاز نمایش داده می‌شود</span></div></section></main>;
 }
 
-function NavItem({ icon: Icon, label, active = false }: { icon: typeof LayoutDashboard; label: string; active?: boolean }) { return <div className={`flex items-center gap-3 rounded-xl px-3 py-3 ${active ? 'bg-white/12 text-white' : 'text-white/60'}`}><Icon size={19} /><span>{label}</span></div>; }
+function NavItem({ icon: Icon, label, href, active = false }: { icon: typeof LayoutDashboard; label: string; href: string; active?: boolean }) { return <Link href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-white/8 hover:text-white ${active ? 'bg-white/12 text-white' : 'text-white/60'}`}><Icon size={19} /><span>{label}</span></Link>; }
 function MetricCard({ label, value, detail, icon: Icon, tone }: { label: string; value: number; detail: string; icon: typeof Users; tone: 'green' | 'blue' | 'amber' | 'rose' }) { const colors = { green: 'bg-[#e5f4ed] text-[#176b52]', blue: 'bg-[#e9f1fb] text-[#316da7]', amber: 'bg-[#fff3d8] text-[#a66b08]', rose: 'bg-[#fbecef] text-[#a84e62]' }; return <article className="rounded-2xl border bg-white p-5 rise"><div className="flex items-start justify-between"><div><p className="text-xs text-[#728079]">{label}</p><p className="mt-3 text-3xl font-bold tracking-tight">{fa.format(value)}</p></div><div className={`grid h-11 w-11 place-items-center rounded-xl ${colors[tone]}`}><Icon size={21} /></div></div><p className="mt-4 text-[11px] text-[#8a948f]">{detail}</p></article>; }
 function StatusRow({ label, ok }: { label: string; ok: boolean }) { return <div className="flex items-center justify-between"><span className="text-white/75">{label}</span><span className={`flex items-center gap-1.5 text-xs ${ok ? 'text-[#d8ef74]' : 'text-white/45'}`}><i className={`h-2 w-2 rounded-full ${ok ? 'bg-[#d8ef74]' : 'bg-white/25'}`} />{ok ? 'آماده' : 'در انتظار'}</span></div>; }
