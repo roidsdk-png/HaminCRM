@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getExportRows } from '@/lib/reports';
+import { writeAudit } from '@/lib/audit';
 
 export async function GET(request: Request) {
   const user = await getChatGPTUser(); if (!user && process.env.NODE_ENV !== 'development') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const url = new URL(request.url); const type = url.searchParams.get('type') ?? 'users'; const format = url.searchParams.get('format') ?? 'csv';
   try {
     const data = await getExportRows(type, { source: url.searchParams.get('source') ?? '', from: validDate(url.searchParams.get('from')), to: validDate(url.searchParams.get('to')) });
+    await writeAudit(user, 'report.exported', 'report', type, { format, rows: data.rows.length });
     if (format === 'xls') return new Response(toExcelXml(data.headers, data.rows), { headers: { 'content-type': 'application/vnd.ms-excel; charset=utf-8', 'content-disposition': `attachment; filename="hamin-${type}.xls"`, 'cache-control': 'no-store' } });
     return new Response('\ufeff' + [data.headers, ...data.rows].map((row) => row.map(csvCell).join(',')).join('\r\n'), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="hamin-${type}.csv"`, 'cache-control': 'no-store' } });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Export failed' }, { status: 400 }); }

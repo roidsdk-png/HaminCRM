@@ -69,4 +69,11 @@ export const ingestionEvents = sqliteTable('ingestion_events', {
   receivedAt: integer('received_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()), processingStatus: text('processing_status', { enum: ['received', 'processed', 'failed'] }).notNull().default('received'), processingError: text('processing_error'),
 }, (t) => [uniqueIndex('uq_ingestion_events_source_external').on(t.sourceId, t.externalEventId), index('idx_ingestion_events_status_received').on(t.processingStatus, t.receivedAt)]);
 
+export const auditLogs = sqliteTable('audit_logs', {
+  id: text('id').primaryKey(), adminUserId: text('admin_user_id').notNull(), adminEmail: text('admin_email'),
+  action: text('action').notNull(), entityType: text('entity_type').notNull(), entityId: text('entity_id'),
+  metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (t) => [index('idx_audit_logs_created').on(t.createdAt), index('idx_audit_logs_admin_created').on(t.adminUserId, t.createdAt)]);
+
 export type Source = typeof sources.$inferSelect;

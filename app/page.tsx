@@ -1,4 +1,4 @@
-import { Activity, Bot, ChevronLeft, ClipboardCheck, Database, HeartHandshake, LayoutDashboard, MessageSquareText, Search, Settings, ShieldCheck, Users } from 'lucide-react';
+import { Activity, Bot, ChevronLeft, ClipboardCheck, Database, DatabaseBackup, HeartHandshake, LayoutDashboard, MessageSquareText, Search, Settings, ShieldCheck, Users } from 'lucide-react';
 import { getDashboardData } from '@/lib/dashboard-data';
 import { chatGPTSignInPath, getChatGPTUser } from '@/app/chatgpt-auth';
 
@@ -27,7 +27,7 @@ export default async function Home() {
         <nav className="space-y-1 text-sm">
           <NavItem active icon={LayoutDashboard} label="نمای کلی" href="/" /><NavItem icon={Users} label="کاربران" href="/users" />
           <NavItem icon={MessageSquareText} label="گفتگوها" href="/conversations" /><NavItem icon={ClipboardCheck} label="آزمون‌ها" href="/tests" />
-          <NavItem icon={HeartHandshake} label="همسان‌گزینی" href="/matchmaking" /><NavItem icon={Activity} label="گزارش‌ها" href="/reports" />
+          <NavItem icon={HeartHandshake} label="همسان‌گزینی" href="/matchmaking" /><NavItem icon={Activity} label="گزارش‌ها" href="/reports" /><NavItem icon={DatabaseBackup} label="سلامت و پشتیبان" href="/system" />
         </nav>
         <div className="mt-auto border-t border-white/10 pt-5"><NavItem icon={Settings} label="تنظیمات منابع" href="/sources" /></div>
       </aside>
