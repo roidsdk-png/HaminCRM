@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { contacts, conversations, ingestionEvents, matchAnswers, matchProfiles, messages, sources, testAnswers, testAttempts } from '@/db/schema';
 
@@ -22,6 +22,7 @@ export async function ingest(sourceId: string, event: InputEvent) {
     else if (event.type === 'test.completed') await ingestTest(sourceId, event);
     else if (event.type === 'test.analysis.updated') await ingestTestAnalysis(sourceId, event);
     else if (event.type === 'matchmaking.profile.completed') await ingestMatchProfile(sourceId, event);
+    else if (event.type === 'matchmaking.profile.updated') await updateMatchProfile(sourceId, event);
     else throw new Error(`Unsupported event type: ${event.type}`);
     await db.update(ingestionEvents).set({ processingStatus: 'processed' }).where(eq(ingestionEvents.id, eventRowId));
     await db.update(sources).set({ lastSeenAt: new Date(), updatedAt: new Date() }).where(eq(sources.id, sourceId));
@@ -58,6 +59,11 @@ function validateEvent(event: InputEvent) {
     requiredString(p.profileId, 'payload.profileId');
     requiredIdentity(asRecord(p.profile));
     validateAnswers(p.answers);
+    return;
+  }
+  if (event.type === 'matchmaking.profile.updated') {
+    requiredIdentity(asRecord(p.profile));
+    if (typeof p.consent !== 'boolean') throw new Error('payload.consent must be a boolean');
     return;
   }
   throw new Error(`Unsupported event type: ${event.type}`);
@@ -100,6 +106,13 @@ async function ingestMatchProfile(sourceId: string, event: InputEvent) {
   await db.insert(matchProfiles).values({ id, sourceId, contactId, externalProfileId: requiredString(p.profileId, 'payload.profileId'), attemptNumber: optionalNumber(p.attemptNumber) ?? 1, profile, traits: numberRecord(p.traits), archetype: optionalString(p.archetype), consent: p.consent === true, completedAt: asDate(event.occurredAt) });
   const answers = Array.isArray(p.answers) ? p.answers : [];
   for (let i = 0; i < answers.length; i++) { const a = asRecord(answers[i]); await db.insert(matchAnswers).values({ id: crypto.randomUUID(), profileId: id, position: i + 1, questionText: requiredString(a.questionText, `answers[${i}].questionText`), answerValue: stringifyValue(a.value), answerLabel: optionalString(a.label) }); }
+}
+
+async function updateMatchProfile(sourceId: string, event: InputEvent) {
+  const db = getDb(); const p = event.payload; const profile = asRecord(p.profile); const contactId = await resolveContact(sourceId, profile);
+  const [latest] = await db.select().from(matchProfiles).where(and(eq(matchProfiles.sourceId, sourceId), eq(matchProfiles.contactId, contactId))).orderBy(desc(matchProfiles.completedAt), desc(matchProfiles.createdAt)).limit(1);
+  if (!latest) throw new Error('Matchmaking profile not found');
+  await db.update(matchProfiles).set({ profile: { ...latest.profile, ...profile }, consent: p.consent === true }).where(eq(matchProfiles.id, latest.id));
 }
 
 async function resolveContact(sourceId: string, p: AnyRecord) {
