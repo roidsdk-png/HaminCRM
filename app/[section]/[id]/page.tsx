@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getChatGPTUser, chatGPTSignInPath } from '@/app/chatgpt-auth';
@@ -16,7 +15,7 @@ export default async function DetailPage({ params }: { params: Promise<{ section
   const detail = await getRecordDetail(section, id);
   if (!detail?.header) notFound();
   return <main className="min-h-screen p-5 md:p-9"><div className="mx-auto max-w-4xl">
-    <Link href={`/${section}`} className="inline-flex items-center gap-2 text-sm font-bold text-[#176b52]"><ArrowRight size={17} />بازگشت</Link>
+    <a href={`/${section}`} className="inline-flex items-center gap-2 text-sm font-bold text-[#176b52]"><ArrowRight size={17} />بازگشت</a>
     <h1 className="mt-6 text-2xl font-bold">جزئیات رکورد</h1>
     <div className="mt-5 grid gap-3 rounded-2xl border bg-white p-5 sm:grid-cols-2">{Object.entries(detail.header).map(([key, value]) => <div key={key} className="rounded-xl bg-[#f6f9f7] p-3"><p className="text-xs text-[#78847f]">{key}</p><p className="mt-1 break-words text-sm">{display(value)}</p></div>)}</div>
     <div className="mt-5 space-y-3">{detail.items.map((record, index) => {
