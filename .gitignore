@@ -33,6 +33,8 @@ yarn-error.log*
 .vercel
 next-env.d.ts
 *.tsbuildinfo
+__pycache__/
+*.pyc
 /dist/
 /.wrangler/
 /outputs/
