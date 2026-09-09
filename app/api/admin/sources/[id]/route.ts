@@ -5,10 +5,12 @@ import { getDb } from '@/db';
 import { sources } from '@/db/schema';
 import { sha256 } from '@/lib/ingestion';
 import { writeAudit } from '@/lib/audit';
+import { can, getAdminRole } from '@/lib/admin-access';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getChatGPTUser();
-  if (!user && process.env.NODE_ENV !== 'development') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const role = await getAdminRole(user);
+  if (!can(role, 'manage')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const origin = request.headers.get('origin'); const host = request.headers.get('host');
   if (origin && host && new URL(origin).host !== host) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
   const { id } = await params; const body = await request.json() as { action?: string };

@@ -15,6 +15,13 @@
       "when": 1788949793644,
       "tag": "0001_last_umar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788950691939,
+      "tag": "0002_chilly_sentinel",
+      "breakpoints": true
     }
   ]
 }

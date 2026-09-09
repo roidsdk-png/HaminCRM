@@ -3,9 +3,11 @@ import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getDb } from '@/db';
 import { auditLogs, contacts, conversations, ingestionEvents, matchAnswers, matchProfiles, messages, sources, testAnswers, testAttempts } from '@/db/schema';
 import { writeAudit } from '@/lib/audit';
+import { can, getAdminRole } from '@/lib/admin-access';
 
 export async function GET() {
-  const user = await getChatGPTUser(); if (!user && process.env.NODE_ENV !== 'development') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getChatGPTUser(); const role = await getAdminRole(user);
+  if (!can(role, 'manage')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const db = getDb();
   const [sourceRows, contactRows, conversationRows, messageRows, attemptRows, answerRows, profileRows, matchAnswerRows, eventRows, auditRows] = await Promise.all([
     db.select({ id: sources.id, slug: sources.slug, name: sources.name, kind: sources.kind, platform: sources.platform, status: sources.status, lastSeenAt: sources.lastSeenAt }).from(sources),

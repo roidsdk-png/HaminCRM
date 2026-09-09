@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { getExportRows } from '@/lib/reports';
 import { writeAudit } from '@/lib/audit';
+import { can, getAdminRole } from '@/lib/admin-access';
 
 export async function GET(request: Request) {
-  const user = await getChatGPTUser(); if (!user && process.env.NODE_ENV !== 'development') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getChatGPTUser(); const role = await getAdminRole(user);
+  if (!can(role, 'read')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const url = new URL(request.url); const type = url.searchParams.get('type') ?? 'users'; const format = url.searchParams.get('format') ?? 'csv';
   try {
     const data = await getExportRows(type, { source: url.searchParams.get('source') ?? '', from: validDate(url.searchParams.get('from')), to: validDate(url.searchParams.get('to')) });

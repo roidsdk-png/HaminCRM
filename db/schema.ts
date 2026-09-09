@@ -76,4 +76,15 @@ export const auditLogs = sqliteTable('audit_logs', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (t) => [index('idx_audit_logs_created').on(t.createdAt), index('idx_audit_logs_admin_created').on(t.adminUserId, t.createdAt)]);
 
+export const administrators = sqliteTable('administrators', {
+  id: text('id').primaryKey(), userId: text('user_id').notNull(), email: text('email').notNull(),
+  role: text('role', { enum: ['owner', 'manager', 'viewer'] }).notNull(), active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()), updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
+}, (t) => [uniqueIndex('uq_administrators_user').on(t.userId), uniqueIndex('uq_administrators_email').on(t.email)]);
+
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(), value: text('value', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  updatedBy: text('updated_by'), updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 export type Source = typeof sources.$inferSelect;
