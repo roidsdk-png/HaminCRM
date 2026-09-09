@@ -93,10 +93,10 @@ async function ingestMatchProfile(sourceId: string, event: InputEvent) {
 async function resolveContact(sourceId: string, p: AnyRecord) {
   const db = getDb(); const external = optionalString(p.userId) ?? optionalString(p.externalUserId); const anonymous = optionalString(p.anonymousId); const ipHash = optionalString(p.ipHash); const phone = optionalString(p.phone); let found;
   if (external) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.externalUserId, external))).limit(1);
-  else if (anonymous) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.anonymousId, anonymous))).limit(1);
-  else if (phone) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.phone, phone))).limit(1);
-  else if (ipHash) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.ipHash, ipHash))).limit(1);
-  if (found) { await db.update(contacts).set({ lastSeenAt: new Date(), name: optionalString(p.name) ?? found.name, phone: optionalString(p.phone) ?? found.phone, province: optionalString(p.province) ?? found.province, city: optionalString(p.city) ?? found.city, gender: optionalString(p.gender) ?? found.gender, age: optionalNumber(p.age) ?? found.age, education: optionalString(p.education) ?? found.education, updatedAt: new Date() }).where(eq(contacts.id, found.id)); return found.id; }
+  if (!found && anonymous) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.anonymousId, anonymous))).limit(1);
+  if (!found && phone) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.phone, phone))).limit(1);
+  if (!found && ipHash) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.ipHash, ipHash))).limit(1);
+  if (found) { await db.update(contacts).set({ externalUserId: found.externalUserId ?? external, anonymousId: found.anonymousId ?? anonymous, ipHash: found.ipHash ?? ipHash, lastSeenAt: new Date(), name: optionalString(p.name) ?? found.name, phone: phone ?? found.phone, province: optionalString(p.province) ?? found.province, city: optionalString(p.city) ?? found.city, gender: optionalString(p.gender) ?? found.gender, age: optionalNumber(p.age) ?? found.age, education: optionalString(p.education) ?? found.education, updatedAt: new Date() }).where(eq(contacts.id, found.id)); return found.id; }
   const id = crypto.randomUUID(); await db.insert(contacts).values({ id, sourceId, externalUserId: external, anonymousId: anonymous, ipHash, name: optionalString(p.name), phone, province: optionalString(p.province), city: optionalString(p.city), gender: optionalString(p.gender), age: optionalNumber(p.age), education: optionalString(p.education), metadata: asRecord(p.metadata) }); return id;
 }
 
