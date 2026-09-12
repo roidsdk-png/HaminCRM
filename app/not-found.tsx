@@ -1,0 +1,4 @@
+import { SearchX } from 'lucide-react';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+
+export default function NotFound() { return <main className="app-grid grid min-h-screen place-items-center p-6"><Empty className="surface max-w-lg border bg-white py-14"><EmptyHeader><EmptyMedia variant="icon" className="h-12 w-12 rounded-2xl bg-emerald-50 text-[#0b6b5b]"><SearchX size={22}/></EmptyMedia><EmptyTitle className="text-lg font-black">صفحه یا رکورد پیدا نشد</EmptyTitle><EmptyDescription>ممکن است این آدرس اشتباه باشد یا رکورد موردنظر دیگر در دسترس نباشد.</EmptyDescription></EmptyHeader><EmptyContent><a href="/" className="rounded-xl bg-[#0b6b5b] px-5 py-3 text-sm font-bold text-white">بازگشت به داشبورد</a></EmptyContent></Empty></main>; }
