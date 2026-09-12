@@ -10,6 +10,7 @@
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "test:smoke": "node scripts/smoke-test.mjs",
+    "test:release": "node scripts/release-check.mjs",
     "lint": "oxlint",
     "format": "oxfmt",
     "db:generate": "drizzle-kit generate"

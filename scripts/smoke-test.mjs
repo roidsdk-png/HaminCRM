@@ -10,6 +10,7 @@ const checks = [
   { name: 'منابع', path: '/sources', expected: 200 },
   { name: 'سلامت سامانه', path: '/system', expected: 200 },
   { name: 'دسترسی مدیران', path: '/access', expected: 200 },
+  { name: 'سلامت برنامه و دیتابیس', path: '/api/health', expected: 200 },
   { name: 'سلامت API دریافت داده', path: '/api/v1/events', expected: 200 },
   { name: 'رد درخواست بدون کلید', path: '/api/v1/events', expected: 401, init: { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' } },
   { name: 'اعتبارسنجی بازیابی', path: '/api/admin/restore', expected: 400, init: { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' } },
