@@ -1,88 +1,30 @@
-import { Activity, Bot, ChevronLeft, ClipboardCheck, Database, DatabaseBackup, HeartHandshake, KeyRound, LayoutDashboard, MessageSquareText, Search, Settings, ShieldCheck, Users } from 'lucide-react';
+import { Activity, ArrowLeft, Bot, CheckCircle2, ClipboardCheck, Database, HeartHandshake, MessageSquareText, RadioTower, Users } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { getDashboardData } from '@/lib/dashboard-data';
-import { chatGPTSignInPath, getChatGPTUser } from '@/app/chatgpt-auth';
+import { getChatGPTUser, chatGPTSignInPath } from '@/app/chatgpt-auth';
+import { CrmShell } from '@/components/crm-shell';
+import { ActivityMixChart, SourceBars, SourceChart } from '@/components/dashboard-charts';
 
-const sourceCatalog = [
-  { slug: 'bale-advisor', name: 'مشاور هوشمند بله', platform: 'بله', kind: 'گفتگو', icon: Bot },
-  { slug: 'eitaa-advisor', name: 'مشاور هوشمند ایتا', platform: 'ایتا', kind: 'گفتگو', icon: MessageSquareText },
-  { slug: 'psytest-1', name: 'آزمون شخصیت', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck },
-  { slug: 'psytest-2', name: 'آزمون اضطراب', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck },
-  { slug: 'psytest-3', name: 'آزمون افسردگی', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck },
-  { slug: 'matchhamin', name: 'کی مناسب منه؟', platform: 'بله', kind: 'همسان‌گزینی', icon: HeartHandshake },
-];
 const fa = new Intl.NumberFormat('fa-IR');
-
+const sourceCatalog = [
+  { slug: 'bale-advisor', name: 'مشاور هوشمند بله', platform: 'بله', kind: 'گفتگو', icon: Bot }, { slug: 'eitaa-advisor', name: 'مشاور هوشمند ایتا', platform: 'ایتا', kind: 'گفتگو', icon: MessageSquareText },
+  { slug: 'psytest-1', name: 'آزمون شخصیت', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck }, { slug: 'psytest-2', name: 'آزمون اضطراب', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck },
+  { slug: 'psytest-3', name: 'آزمون افسردگی', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck }, { slug: 'matchhamin', name: 'کی مناسب منه؟', platform: 'بله', kind: 'همسان‌گزینی', icon: HeartHandshake },
+];
+export const dynamic = 'force-dynamic';
 export default async function Home() {
-  const user = await getChatGPTUser();
-  if (!user && process.env.NODE_ENV !== 'development') return <SignIn />;
-  const data = await getDashboardData();
-  const maxDay = Math.max(1, ...data.daily.map((item) => item.count));
-  return (
-    <main className="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
-      <aside className="hidden min-h-screen border-l bg-[#102f27] px-5 py-7 text-white lg:flex lg:flex-col">
-        <div className="mb-10 flex items-center gap-3 px-2">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#d7f16b] text-[#17382e]"><Database size={22} /></div>
-          <div><p className="text-lg font-bold">مرکز حامین</p><p className="text-xs text-white/55">سامانه مدیریت یکپارچه</p></div>
-        </div>
-        <nav className="space-y-1 text-sm">
-          <NavItem active icon={LayoutDashboard} label="نمای کلی" href="/" /><NavItem icon={Users} label="کاربران" href="/users" />
-          <NavItem icon={MessageSquareText} label="گفتگوها" href="/conversations" /><NavItem icon={ClipboardCheck} label="آزمون‌ها" href="/tests" />
-          <NavItem icon={HeartHandshake} label="همسان‌گزینی" href="/matchmaking" /><NavItem icon={Activity} label="گزارش‌ها" href="/reports" /><NavItem icon={DatabaseBackup} label="سلامت و پشتیبان" href="/system" />
-        </nav>
-        <div className="mt-auto space-y-1 border-t border-white/10 pt-5"><NavItem icon={KeyRound} label="دسترسی و نگهداری" href="/access" /><NavItem icon={Settings} label="تنظیمات منابع" href="/sources" /></div>
-      </aside>
-
-      <section className="min-w-0">
-        <header className="flex h-20 items-center justify-between border-b bg-white px-5 md:px-9">
-          <div><h1 className="text-xl font-bold md:text-2xl">نمای کلی سامانه</h1><p className="mt-1 text-xs text-[#738079]">آخرین وضعیت همه ربات‌ها و وب‌اپ‌ها</p></div>
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-xl border bg-[#f8faf9] px-3 py-2 text-sm text-[#7a8580] md:flex"><Search size={16} /><span>جستجو در اطلاعات...</span></div>
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#e7f3ee] font-bold text-[#176b52]">ح</div>
-          </div>
-        </header>
-
-        <div className="mx-auto max-w-[1450px] space-y-7 p-5 md:p-9">
-          <div className="rounded-2xl border border-[#cfe0d9] bg-gradient-to-l from-[#eaf6f1] to-white p-4 text-sm text-[#31584c] rise">
-            <div className="flex flex-wrap items-center gap-2"><ShieldCheck size={18} className="text-[#176b52]" /><strong>زیرساخت امن و مستقل</strong><span className="text-[#64746e]">— هیچ رمز سروری در CRM ذخیره نمی‌شود و منابع فقط داده ارسال می‌کنند.</span></div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="کاربران یکتا" value={data.contacts} detail="در همه منابع" icon={Users} tone="green" />
-            <MetricCard label="پیام‌های ثبت‌شده" value={data.messages} detail={`${fa.format(data.aiMessages)} پاسخ هوش مصنوعی`} icon={MessageSquareText} tone="blue" />
-            <MetricCard label="آزمون‌های تکمیل‌شده" value={data.tests} detail="همراه پاسخ‌های خام و نتیجه" icon={ClipboardCheck} tone="amber" />
-            <MetricCard label="پروفایل‌های ازدواج" value={data.matchProfiles} detail="هر تلاش به‌صورت مستقل" icon={HeartHandshake} tone="rose" />
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
-            <section className="rounded-2xl border bg-white p-5 rise [animation-delay:80ms] md:p-6">
-              <div className="mb-7 flex items-center justify-between"><div><h2 className="font-bold">فعالیت ۷ روز اخیر</h2><p className="mt-1 text-xs text-[#7a8580]">مجموع پیام‌ها و تکمیل آزمون‌ها</p></div><span className="rounded-lg bg-[#edf6f2] px-3 py-1.5 text-xs text-[#176b52]">به‌روزرسانی خودکار</span></div>
-              <div className="flex h-52 items-end justify-between gap-3 border-b border-dashed px-2 pb-2">
-                {data.daily.map((day) => <div key={day.label} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="w-full max-w-12 rounded-t-lg bg-[#2c8067] transition-all" style={{ height: `${Math.max(4, (day.count / maxDay) * 85)}%` }} title={String(day.count)} /><span className="text-[11px] text-[#7a8580]">{day.label}</span></div>)}
-              </div>
-            </section>
-            <section className="rounded-2xl border bg-[#173c32] p-6 text-white rise [animation-delay:130ms]">
-              <p className="text-xs text-white/60">وضعیت اتصال</p><div className="mt-2 flex items-end gap-2"><strong className="text-4xl">{fa.format(data.activeSources)}</strong><span className="pb-1 text-sm text-white/60">از {fa.format(sourceCatalog.length)} منبع فعال</span></div>
-              <div className="my-6 h-px bg-white/10" /><div className="space-y-3 text-sm"><StatusRow label="دیتابیس مرکزی" ok /><StatusRow label="API دریافت داده" ok /><StatusRow label="اتصال منابع فعلی" ok={data.activeSources > 0} /></div>
-              <p className="mt-6 rounded-xl bg-white/7 p-3 text-xs leading-6 text-white/65">اتصال واقعی منابع در مرحله یکپارچه‌سازی انجام می‌شود؛ تا آن زمان هیچ تغییری در برنامه‌های فعال ایجاد نمی‌کنیم.</p>
-            </section>
-          </div>
-
-          <section className="rise [animation-delay:180ms]">
-            <div className="mb-4 flex items-center justify-between"><div><h2 className="font-bold">منابع تحت مدیریت</h2><p className="mt-1 text-xs text-[#7a8580]">ربات‌ها و وب‌اپ‌های فعلی پروژه</p></div><button className="flex items-center gap-1 text-sm font-bold text-[#176b52]">مشاهده جزئیات <ChevronLeft size={16} /></button></div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {sourceCatalog.map((source) => { const connected = data.sourceSlugs.includes(source.slug); return <article key={source.slug} className="group rounded-2xl border bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#173c32]/5"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[#edf5f2] text-[#176b52]"><source.icon size={21} /></div><div><h3 className="text-sm font-bold">{source.name}</h3><p className="mt-1 text-xs text-[#7b8782]">{source.platform} · {source.kind}</p></div></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${connected ? 'bg-[#e1f5e9] text-[#187443]' : 'bg-[#f2f3f2] text-[#7b8581]'}`}>{connected ? 'متصل' : 'در انتظار اتصال'}</span></div></article>; })}
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
-  );
+  const user = await getChatGPTUser(); if (!user && process.env.NODE_ENV !== 'development') return <SignIn />;
+  const data = await getDashboardData(); const sourceData = data.sourceActivity.map((item) => ({ name: item.name, value: item.messages + item.tests + item.profiles })); const aiShare = data.messages ? Math.round(data.aiMessages / data.messages * 100) : 0;
+  return <CrmShell title="نمای کلی" subtitle="آمار یکپارچه ربات‌ها، گفتگوها و آزمون‌ها"><div className="mx-auto max-w-[1500px] space-y-5 p-4 md:p-8">
+    <section className="surface flex flex-col justify-between gap-4 overflow-hidden rounded-3xl border border-[#183b45] bg-[#102a35] p-5 text-white md:flex-row md:items-center"><div className="flex items-center gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#b9ef72] text-[#102a35]"><RadioTower size={22}/></span><div><h2 className="font-black">مرکز دریافت داده فعال است</h2><p className="mt-1 text-sm text-white/60">آخرین وضعیت همه منابع در یک نما</p></div></div><div className="flex flex-wrap gap-2"><Status label="منابع فعال" value={`${fa.format(data.activeSources)} از ${fa.format(sourceCatalog.length)}`} good={data.activeSources > 0}/><Status label="نسبت پاسخ AI" value={`${fa.format(aiShare)}٪`} good={data.messages > 0}/><a href="/system" className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-3 text-sm font-bold hover:bg-white/13"><Activity size={17}/>سلامت سامانه</a></div></section>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric href="/users" label="کاربران یکتا" value={data.contacts} detail="پرونده‌های ثبت‌شده" icon={Users} color="emerald"/><Metric href="/conversations" label="پیام‌های ثبت‌شده" value={data.messages} detail={`${fa.format(data.aiMessages)} پاسخ هوش مصنوعی`} icon={MessageSquareText} color="blue"/><Metric href="/tests" label="آزمون‌های تکمیل‌شده" value={data.tests} detail="همراه تمام پاسخ‌ها" icon={ClipboardCheck} color="amber"/><Metric href="/matchmaking" label="پروفایل‌های ازدواج" value={data.matchProfiles} detail="هر تلاش به‌صورت مستقل" icon={HeartHandshake} color="pink"/></div>
+    <div className="grid gap-5 xl:grid-cols-[1.5fr_.7fr]"><ChartCard title="فعالیت هفت روز اخیر" description="مقایسه پیام کاربران، پاسخ‌های هوش مصنوعی و آزمون‌ها"><div className="mb-3 flex flex-wrap gap-4 text-xs font-bold text-slate-500"><Legend color="#0b6b5b" label="پیام کاربر"/><Legend color="#60a5fa" label="پاسخ AI"/><Legend color="#f59e0b" label="آزمون" line/></div><ActivityMixChart data={data.dailyBreakdown}/></ChartCard><ChartCard title="ترکیب داده‌ها" description="سهم هر منبع از کل اطلاعات"><SourceChart data={sourceData}/><div className="grid gap-2 border-t pt-4">{sourceData.filter((item) => item.value).slice(0, 5).map((item, index) => <div key={item.name} className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 truncate text-slate-600"><i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: ['#0b6b5b','#3b82f6','#f59e0b','#db2777','#8b5cf6'][index] }}/>{item.name}</span><b>{fa.format(item.value)}</b></div>)}</div></ChartCard></div>
+    <div className="grid gap-5 xl:grid-cols-[.75fr_1.25fr]"><ChartCard title="مقایسه عملکرد منابع" description="مجموع گفتگو، آزمون و پروفایل"><SourceBars data={sourceData}/>{!sourceData.some((item) => item.value) && <EmptyChart/>}</ChartCard><section><div className="mb-3 flex items-end justify-between"><div><h2 className="font-black">وضعیت منابع</h2><p className="mt-1 text-sm text-slate-500">اتصال شش سرویس فعلی</p></div><a href="/sources" className="inline-flex items-center gap-1 text-sm font-bold text-[#0b6b5b]">مدیریت منابع <ArrowLeft size={15}/></a></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{sourceCatalog.map((source) => { const connected = data.sourceSlugs.includes(source.slug); return <a href="/sources" key={source.slug} className="surface group rounded-2xl border bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-200"><div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-[#0b6b5b]"><source.icon size={19}/></span><span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold ${connected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}><i className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-slate-300'}`}/>{connected ? 'متصل' : 'در انتظار'}</span></div><h3 className="mt-4 text-sm font-black">{source.name}</h3><p className="mt-1 text-xs text-slate-500">{source.platform} · {source.kind}</p></a>; })}</div></section></div>
+  </div></CrmShell>;
 }
-
-function SignIn() {
-  return <main className="grid min-h-screen place-items-center bg-[#102f27] p-6"><section className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl shadow-black/20"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#d7f16b] text-[#17382e]"><Database size={26} /></div><h1 className="mt-6 text-2xl font-bold">مرکز مدیریت حامین</h1><p className="mt-3 text-sm leading-7 text-[#68756f]">برای مشاهده اطلاعات کاربران، گفتگوها و آزمون‌ها با حساب مجاز وارد شوید.</p><a href={chatGPTSignInPath('/')} className="mt-7 block rounded-xl bg-[#176b52] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#11533f]">ورود امن به سامانه</a><div className="mt-5 flex items-center justify-center gap-2 text-xs text-[#89938f]"><ShieldCheck size={15} /><span>اطلاعات فقط برای مدیران مجاز نمایش داده می‌شود</span></div></section></main>;
-}
-
-function NavItem({ icon: Icon, label, href, active = false }: { icon: typeof LayoutDashboard; label: string; href: string; active?: boolean }) { return <a href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-white/8 hover:text-white ${active ? 'bg-white/12 text-white' : 'text-white/60'}`}><Icon size={19} /><span>{label}</span></a>; }
-function MetricCard({ label, value, detail, icon: Icon, tone }: { label: string; value: number; detail: string; icon: typeof Users; tone: 'green' | 'blue' | 'amber' | 'rose' }) { const colors = { green: 'bg-[#e5f4ed] text-[#176b52]', blue: 'bg-[#e9f1fb] text-[#316da7]', amber: 'bg-[#fff3d8] text-[#a66b08]', rose: 'bg-[#fbecef] text-[#a84e62]' }; return <article className="rounded-2xl border bg-white p-5 rise"><div className="flex items-start justify-between"><div><p className="text-xs text-[#728079]">{label}</p><p className="mt-3 text-3xl font-bold tracking-tight">{fa.format(value)}</p></div><div className={`grid h-11 w-11 place-items-center rounded-xl ${colors[tone]}`}><Icon size={21} /></div></div><p className="mt-4 text-[11px] text-[#8a948f]">{detail}</p></article>; }
-function StatusRow({ label, ok }: { label: string; ok: boolean }) { return <div className="flex items-center justify-between"><span className="text-white/75">{label}</span><span className={`flex items-center gap-1.5 text-xs ${ok ? 'text-[#d8ef74]' : 'text-white/45'}`}><i className={`h-2 w-2 rounded-full ${ok ? 'bg-[#d8ef74]' : 'bg-white/25'}`} />{ok ? 'آماده' : 'در انتظار'}</span></div>; }
+function Status({ label, value, good }: { label: string; value: string; good: boolean }) { return <div className="min-w-28 rounded-xl border border-white/10 bg-white/8 px-4 py-2.5"><p className="text-xs text-white/50">{label}</p><p className="mt-1 flex items-center gap-1.5 text-sm font-black">{good && <CheckCircle2 size={14} className="text-[#b9ef72]"/>}{value}</p></div>; }
+function Metric({ href, label, value, detail, icon: Icon, color }: { href: string; label: string; value: number; detail: string; icon: typeof Users; color: 'emerald'|'blue'|'amber'|'pink' }) { const tones = { emerald: 'bg-emerald-50 text-emerald-700', blue: 'bg-blue-50 text-blue-600', amber: 'bg-amber-50 text-amber-600', pink: 'bg-pink-50 text-pink-600' }; return <a href={href} className="metric-card surface group rounded-2xl border bg-white p-5"><div className="flex items-start justify-between"><div><p className="text-sm text-slate-500">{label}</p><p className="mt-3 text-3xl font-black tracking-tight text-slate-800">{fa.format(value)}</p></div><span className={`grid h-11 w-11 place-items-center rounded-2xl ${tones[color]}`}><Icon size={21}/></span></div><div className="mt-4 flex items-center justify-between text-xs text-slate-400"><span>{detail}</span><ArrowLeft size={14} className="transition group-hover:-translate-x-1"/></div></a>; }
+function ChartCard({ title, description, children }: { title: string; description: string; children: ReactNode }) { return <section className="surface rounded-3xl border bg-white p-5 md:p-6"><div className="mb-4"><h2 className="font-black">{title}</h2><p className="mt-1 text-sm text-slate-500">{description}</p></div>{children}</section>; }
+function Legend({ color, label, line = false }: { color: string; label: string; line?: boolean }) { return <span className="flex items-center gap-2"><i className={line ? 'h-0.5 w-5 rounded-full' : 'h-2.5 w-2.5 rounded-sm'} style={{ background: color }}/>{label}</span>; }
+function EmptyChart() { return <div className="grid h-52 place-items-center text-center text-sm leading-7 text-slate-400">بعد از دریافت اولین داده، مقایسه منابع اینجا نمایش داده می‌شود.</div>; }
+function SignIn() { return <main className="grid min-h-screen place-items-center bg-[#102a35] p-6"><section className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl shadow-black/20"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#b9ef72] text-[#102a35]"><Database size={26}/></div><h1 className="mt-6 text-2xl font-black">مرکز مدیریت حامین</h1><p className="mt-3 text-sm leading-7 text-slate-500">برای مشاهده اطلاعات محرمانه با حساب مجاز وارد شوید.</p><a href={chatGPTSignInPath('/')} className="mt-7 block rounded-xl bg-[#0b6b5b] px-5 py-3 text-sm font-bold text-white">ورود امن به سامانه</a></section></main>; }

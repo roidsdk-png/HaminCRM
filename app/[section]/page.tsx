@@ -1,10 +1,12 @@
-import { ArrowRight, Bot, ClipboardCheck, HeartHandshake, MessageSquareText, Search, Settings, Users } from 'lucide-react';
+import { Bot, ClipboardCheck, HeartHandshake, MessageSquareText, Search, Settings, Users } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getChatGPTUser, chatGPTSignInPath } from '@/app/chatgpt-auth';
 import { getSectionData } from '@/lib/section-data';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CrmShell } from '@/components/crm-shell';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 export const dynamic = 'force-dynamic';
 const sections = {
@@ -16,24 +18,26 @@ const sections = {
   sources: { title: 'تنظیمات منابع', description: 'وضعیت اتصال امن ربات‌ها و وب‌اپ‌ها', icon: Settings, columns: ['نام منبع', 'نوع', 'وضعیت اتصال', 'آخرین دریافت'] },
 } as const;
 
-export default async function SectionPage({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ q?: string; source?: string }> }) {
+export default async function SectionPage({ params, searchParams }: { params: Promise<{ section: string }>; searchParams: Promise<{ q?: string; source?: string; page?: string }> }) {
   const { section } = await params; const item = sections[section as keyof typeof sections]; if (!item) notFound();
   const user = await getChatGPTUser(); if (!user && process.env.NODE_ENV !== 'development') return <SignIn returnTo={`/${section}`} />;
-  const filters = await searchParams; const data = await getSectionData(section, filters.q, filters.source); const Icon = item.icon;
-  return <main className="min-h-screen p-5 md:p-9"><div className="mx-auto max-w-6xl">
-    <a href="/" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#176b52]"><ArrowRight size={17} />بازگشت به داشبورد</a>
-    <header className="flex items-center gap-4"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#e4f3ed] text-[#176b52]"><Icon size={23} /></div><div><h1 className="text-2xl font-bold">{item.title}</h1><p className="mt-1 text-sm text-[#6e7b75]">{item.description}</p></div></header>
-    <form className="mt-7 grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-[1fr_240px_auto]">
+  const filters = await searchParams; const requestedPage = Math.max(1, Number.parseInt(filters.page ?? '1', 10) || 1); const data = await getSectionData(section, filters.q, filters.source, requestedPage); const Icon = item.icon;
+  return <CrmShell title={item.title} subtitle={item.description}><div className="mx-auto max-w-7xl p-4 md:p-8">
+    <header className="surface flex flex-col justify-between gap-4 rounded-3xl border bg-white p-5 sm:flex-row sm:items-center"><div className="flex items-center gap-4"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-[#0b6b5b]"><Icon size={23} /></div><div><h2 className="font-black">{item.title}</h2><p className="mt-1 text-xs text-slate-500">{item.description}</p></div></div><div className="rounded-xl bg-slate-50 px-4 py-2 text-xs text-slate-500"><b className="text-slate-800">{data.total.toLocaleString('fa-IR')}</b> رکورد موجود</div></header>
+    <form className="surface mt-5 grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-[1fr_240px_auto]">
       <div className="relative"><Search className="absolute right-3 top-3 text-[#84908b]" size={17} /><Input name="q" defaultValue={filters.q} placeholder="جستجو..." className="h-10 pr-10" /></div>
       <select name="source" defaultValue={filters.source ?? ''} className="h-10 rounded-lg border bg-white px-3 text-sm"><option value="">همه منابع</option>{data.sources.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}</select>
-      <Button type="submit" className="h-10 px-5">اعمال فیلتر</Button>
+      <Button type="submit" className="h-10 bg-[#0b6b5b] px-5">اعمال فیلتر</Button>
     </form>
-    <section className="mt-4 overflow-hidden rounded-2xl border bg-white"><div className="border-b px-5 py-4 text-sm text-[#6c7973]">{data.total.toLocaleString('fa-IR')} رکورد نمایش داده می‌شود</div>
-      <Table><TableHeader><TableRow className="bg-[#f7faf8]">{item.columns.map((c) => <TableHead key={c} className="px-5 text-right font-bold">{c}</TableHead>)}</TableRow></TableHeader><TableBody>
+    <section className="surface mt-4 overflow-hidden rounded-2xl border bg-white"><div className="flex items-center justify-between border-b px-5 py-4 text-sm text-slate-500"><span>نتایج فیلتر شده</span><span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px]">برای جزئیات روی نام کلیک کنید</span></div>
+      <Table><TableHeader><TableRow className="bg-slate-50/70">{item.columns.map((c) => <TableHead key={c} className="px-5 text-right font-bold text-slate-600">{c}</TableHead>)}</TableRow></TableHeader><TableBody>
         {data.rows.map((row) => <TableRow key={row.id}>{row.cells.map((cell, i) => <TableCell key={i} className="px-5 py-4">{i === 0 && row.href ? <a className="font-bold text-[#176b52] hover:underline" href={row.href}>{cell}</a> : cell}</TableCell>)}</TableRow>)}
       </TableBody></Table>
       {!data.rows.length && <div className="grid min-h-64 place-items-center p-8 text-center"><div><Icon className="mx-auto text-[#8b9b94]" /><h2 className="mt-4 font-bold">داده‌ای پیدا نشد</h2><p className="mt-2 text-sm text-[#7b8782]">پس از اتصال منابع، اطلاعات این بخش خودکار نمایش داده می‌شود.</p></div></div>}
+      {data.totalPages > 1 && <div className="border-t px-4 py-4"><Pagination><PaginationContent>{data.page > 1 && <PaginationItem><PaginationPrevious href={pageHref(section, filters, data.page - 1)} text="قبلی" /></PaginationItem>}{pageRange(data.page, data.totalPages).map((page) => <PaginationItem key={page}><PaginationLink href={pageHref(section, filters, page)} isActive={page === data.page}>{page.toLocaleString('fa-IR')}</PaginationLink></PaginationItem>)}{data.page < data.totalPages && <PaginationItem><PaginationNext href={pageHref(section, filters, data.page + 1)} text="بعدی" /></PaginationItem>}</PaginationContent></Pagination></div>}
     </section>
-  </div></main>;
+  </div></CrmShell>;
 }
+function pageHref(section: string, filters: { q?: string; source?: string }, page: number) { const params = new URLSearchParams(); if (filters.q) params.set('q', filters.q); if (filters.source) params.set('source', filters.source); if (page > 1) params.set('page', String(page)); const query = params.toString(); return `/${section}${query ? `?${query}` : ''}`; }
+function pageRange(current: number, total: number) { const start = Math.max(1, Math.min(current - 2, total - 4)); return Array.from({ length: Math.min(5, total) }, (_, index) => start + index); }
 function SignIn({ returnTo }: { returnTo: string }) { return <main className="grid min-h-screen place-items-center bg-[#102f27] p-6"><div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center"><h1 className="text-xl font-bold">ورود مدیر</h1><p className="mt-3 text-sm text-[#68756f]">این بخش شامل اطلاعات محرمانه است.</p><a className="mt-6 block rounded-xl bg-[#176b52] px-5 py-3 text-sm font-bold text-white" href={chatGPTSignInPath(returnTo)} target="_top">ورود امن</a></div></main>; }

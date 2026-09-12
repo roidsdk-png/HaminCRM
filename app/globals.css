@@ -21,11 +21,11 @@
 }
 
 :root {
-  --background: #f5f7f6;
-  --foreground: #17201d;
+  --background: #f4f6f8;
+  --foreground: #17212b;
   --card: #ffffff;
   --card-foreground: #17201d;
-  --primary: #176b52;
+  --primary: #0b6b5b;
   --primary-foreground: #ffffff;
   --muted: #edf2ef;
   --muted-foreground: #66736e;
@@ -40,6 +40,11 @@ html { background: var(--background); }
 body { margin: 0; background: var(--background); color: var(--foreground); font-family: Tahoma, Arial, sans-serif; }
 button, input, select, textarea { font: inherit; }
 ::selection { background: #bfe5d7; }
+
+.app-grid { background-image: linear-gradient(rgba(15, 36, 54, .025) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 36, 54, .025) 1px, transparent 1px); background-size: 34px 34px; }
+.surface { box-shadow: 0 1px 2px rgba(15, 35, 52, .04), 0 12px 30px rgba(15, 35, 52, .035); }
+.metric-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.metric-card:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(15, 35, 52, .09); border-color: #c7d8d3; }
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
