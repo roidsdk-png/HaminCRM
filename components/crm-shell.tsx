@@ -1,34 +1,284 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { Activity, ClipboardCheck, Database, DatabaseBackup, HeartHandshake, KeyRound, LayoutDashboard, Menu, MessageSquareText, Search, Settings, Users } from 'lucide-react';
+import { useState, useEffect, type ReactNode } from 'react';
+import {
+  BarChart3,
+  ClipboardCheck,
+  DatabaseBackup,
+  HeartHandshake,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MessageSquareText,
+  Search,
+  ShieldCheck,
+  Users,
+  Wifi,
+  Settings,
+  Sun,
+  Moon
+} from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
+import { BrandLogo } from '@/components/brand-logo';
 
-const navigation = [
-  ['/', 'نمای کلی', LayoutDashboard], ['/users', 'کاربران', Users], ['/conversations', 'گفتگوها', MessageSquareText],
-  ['/tests', 'آزمون‌ها', ClipboardCheck], ['/matchmaking', 'همسان‌گزینی', HeartHandshake], ['/reports', 'گزارش‌ها', Activity],
-];
-const operations = [['/system', 'سلامت و پشتیبان', DatabaseBackup], ['/sources', 'منابع و اتصال‌ها', Settings], ['/access', 'دسترسی‌ها', KeyRound]];
+function ThemeToggle() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-export function CrmShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
-  const pathname = usePathname(); const router = useRouter();
-  function search(form: HTMLFormElement) { const raw = new FormData(form).get('q'); const q = typeof raw === 'string' ? raw.trim() : ''; router.push(`/users${q ? `?q=${encodeURIComponent(q)}` : ''}`); }
-  const nav = (mobile = false) => <nav className={mobile ? 'space-y-1' : 'space-y-1 text-sm'}>{navigation.map(([href, label, Icon]) => <Nav key={href as string} href={href as string} label={label as string} icon={Icon as typeof Database} current={pathname} mobile={mobile} />)}<div className="my-5 border-t border-white/10" />{operations.map(([href, label, Icon]) => <Nav key={href as string} href={href as string} label={label as string} icon={Icon as typeof Database} current={pathname} mobile={mobile} />)}</nav>;
-  return <main className="app-grid min-h-screen lg:grid lg:grid-cols-[270px_minmax(0,1fr)]">
-    <aside className="hidden min-h-screen bg-[#102a35] px-4 py-6 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
-      <Brand />{nav()}<div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4"><p className="text-xs text-white/50">وضعیت سامانه</p><div className="mt-2 flex items-center gap-2 text-sm"><i className="h-2 w-2 rounded-full bg-[#b9ef72] shadow-[0_0_0_4px_rgba(185,239,114,.12)]" />دیتابیس مرکزی آماده</div></div>
-    </aside>
-    <section className="min-w-0">
-      <header className="sticky top-0 z-20 flex min-h-20 items-center justify-between border-b border-slate-200/80 bg-[#f4f6f8]/90 px-4 backdrop-blur md:px-8">
-        <div className="flex items-center gap-3"><Sheet><SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}><Menu /></SheetTrigger><SheetContent side="right" className="w-[290px] border-0 bg-[#102a35] p-4 text-white"><SheetTitle className="sr-only">منوی مدیریت</SheetTitle><Brand /><form onSubmit={(event) => { event.preventDefault(); search(event.currentTarget); }} className="relative mb-5"><input name="q" aria-label="جستجو در کاربران" placeholder="جستجوی کاربر..." className="h-11 w-full rounded-xl border border-white/10 bg-white/8 pr-3 pl-11 text-sm text-white outline-none placeholder:text-white/35 focus:border-[#b9ef72]"/><button type="submit" aria-label="اجرای جستجو" className="absolute left-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-white"><Search size={16}/></button></form>{nav(true)}</SheetContent></Sheet><div><h1 className="text-lg font-black tracking-tight text-slate-900 md:text-xl">{title}</h1>{subtitle && <p className="mt-1 hidden text-xs text-slate-500 sm:block">{subtitle}</p>}</div></div>
-        <div className="flex items-center gap-2"><form onSubmit={(event) => { event.preventDefault(); search(event.currentTarget); }} className="relative hidden md:block"><input name="q" aria-label="جستجو در کاربران" placeholder="جستجو در کاربران..." className="h-10 w-56 rounded-xl border border-slate-200 bg-white pr-3 pl-10 text-sm outline-none transition focus:w-72 focus:border-[#0b6b5b] focus:ring-4 focus:ring-emerald-100" /><button type="submit" aria-label="اجرای جستجو" className="absolute left-1 top-1 grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-[#0b6b5b]"><Search size={17} /></button></form><a href="/sources" className="hidden rounded-xl bg-[#0b6b5b] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#075647] sm:block">مدیریت منابع</a><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#d9efe8] text-sm font-black text-[#0b6b5b]">ح</div></div>
-      </header>
-      {children}
-    </section>
-  </main>;
+  useEffect(() => {
+    let mounted = true;
+    void Promise.resolve().then(() => {
+      if (mounted) {
+        setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const toggle = () => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setTheme('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setTheme('light');
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="relative grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-300"
+      aria-label="تغییر تم"
+      title="تغییر تم"
+    >
+      <Sun className={`absolute h-5 w-5 transition-all duration-300 ${theme === 'dark' ? 'scale-0 opacity-0 rotate-90' : 'scale-100 opacity-100 rotate-0'}`} />
+      <Moon className={`absolute h-5 w-5 transition-all duration-300 ${theme === 'dark' ? 'scale-100 opacity-100 rotate-0' : 'scale-0 opacity-0 -rotate-90'}`} />
+    </button>
+  );
 }
 
-function Brand() { return <a href="/" className="mb-8 flex items-center gap-3 px-2"><div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#b9ef72] text-[#102a35]"><Database size={22} /></div><div><p className="font-black">مرکز حامین</p><p className="mt-0.5 text-xs text-white/50">کنترل‌پنل یکپارچه</p></div></a>; }
-function Nav({ href, label, icon: Icon, current, mobile }: { href: string; label: string; icon: typeof Database; current: string; mobile: boolean }) { const active = href === '/' ? current === '/' : current.startsWith(href); return <a href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition ${active ? 'bg-white text-[#102a35] shadow-lg shadow-black/10' : 'text-white/62 hover:bg-white/8 hover:text-white'} ${mobile ? 'text-sm' : ''}`}><Icon size={19} /><span>{label}</span>{active && <i className="mr-auto h-1.5 w-1.5 rounded-full bg-[#0b6b5b]" />}</a>; }
+type NavItem = { href: string; label: string; icon: typeof Users };
+
+const mainNav: NavItem[] = [
+  { href: '/', label: 'داشبورد', icon: LayoutDashboard },
+  { href: '/conversations', label: 'چت‌بات‌ها', icon: MessageSquareText },
+  { href: '/tests', label: 'تست‌های روان‌شناسی', icon: ClipboardCheck },
+  { href: '/matchmaking', label: 'فرم کی مناسب ازدواجه', icon: HeartHandshake },
+  { href: '/users', label: 'مدیریت سرویس‌ها', icon: Users },
+];
+
+const toolsNav: NavItem[] = [
+  { href: '/reports', label: 'گزارش‌گیری و آمار', icon: BarChart3 },
+  { href: '/sources', label: 'منابع و ربات‌ها', icon: Wifi },
+  { href: '/access', label: 'مدیران و دسترسی‌ها', icon: ShieldCheck },
+  { href: '/system', label: 'تنظیمات و بک‌آپ', icon: DatabaseBackup },
+];
+
+export function CrmShell({
+  children,
+  title,
+  subtitle,
+}: {
+  children: ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [mobileMenuReady, setMobileMenuReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void Promise.resolve().then(() => {
+      if (mounted) setMobileMenuReady(true);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const livePages = new Set(['/', '/conversations', '/tests', '/matchmaking', '/users', '/reports', '/sources']);
+    if (!livePages.has(pathname)) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [pathname, router]);
+
+  function search(form: HTMLFormElement) {
+    const raw = new FormData(form).get('q');
+    const q = typeof raw === 'string' ? raw.trim() : '';
+    router.push(`/users${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+  }
+
+  async function handleLogout() {
+    await fetch('/api/admin/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  }
+
+  function NavLink({ item }: { item: NavItem }) {
+    const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+    const Icon = item.icon;
+    return (
+      <a
+        href={item.href}
+        className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all ${
+          active
+            ? 'font-bold shadow-sm'
+            : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+        }`}
+        style={active ? { backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' } : undefined}
+        aria-current={active ? 'page' : undefined}
+      >
+        <div className={`relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+          active ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : 'text-muted-foreground group-hover:text-foreground'
+        }`}>
+          <Icon size={18} />
+        </div>
+        <span style={active ? { color: 'var(--accent-foreground)' } : undefined}>{item.label}</span>
+      </a>
+    );
+  }
+
+  const sidebarContent = (
+    <div className="flex h-full flex-col bg-card border-r-0 dark:border-l dark:border-border">
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-border">
+        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-white shadow-md shadow-primary/20">
+          <BrandLogo className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-[16px] font-black text-foreground tracking-tight">حامین چارت</h1>
+          <p className="text-[11px] text-muted-foreground font-medium">سامانه مدیریت یکپارچه</p>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+        <div>
+          <p className="mb-3 px-3 text-[11px] font-bold text-muted-foreground tracking-wider">بخش‌های اصلی</p>
+          <nav className="space-y-1">
+            {mainNav.map((item) => <NavLink key={item.href} item={item} />)}
+          </nav>
+        </div>
+
+        <div>
+          <p className="mb-3 px-3 text-[11px] font-bold text-muted-foreground tracking-wider">ابزارها</p>
+          <nav className="space-y-1">
+            {toolsNav.map((item) => <NavLink key={item.href} item={item} />)}
+          </nav>
+        </div>
+      </div>
+
+      {/* User / Footer */}
+      <div className="p-4 border-t border-border bg-muted/20">
+        <div className="flex items-center gap-3 rounded-xl p-2 bg-card border border-border shadow-sm">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary font-bold text-sm">
+            م
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-bold text-foreground truncate">مدیر سیستم</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500"></span>
+              </span>
+              <p className="text-[10px] text-muted-foreground">پاسخگو و آنلاین</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <main className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[260px_minmax(0,1fr)] transition-colors duration-300" dir="rtl">
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:block lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden border-l border-border shadow-sm z-40 bg-card">
+        {sidebarContent}
+      </aside>
+
+      {/* Main Content */}
+      <section className="flex min-w-0 flex-col">
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/80 bg-card/80 backdrop-blur-xl px-4 sm:px-6 md:px-8 shadow-sm transition-colors duration-300">
+          <div className="flex items-center gap-4">
+            {mobileMenuReady ? (
+              <Sheet>
+                <SheetTrigger className="lg:hidden rounded-lg p-2 text-muted-foreground hover:bg-muted transition">
+                  <Menu size={20} />
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[280px] border-l-0 p-0">
+                  <SheetTitle className="sr-only">منو</SheetTitle>
+                  {sidebarContent}
+                </SheetContent>
+              </Sheet>
+            ) : (
+              <span aria-hidden="true" className="grid h-9 w-9 place-items-center lg:hidden text-muted-foreground">
+                <Menu size={20} />
+              </span>
+            )}
+
+            <div className="hidden sm:flex flex-col">
+              <h2 className="text-[14px] font-bold text-foreground">{title}</h2>
+              {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <form
+              onSubmit={(e) => { e.preventDefault(); search(e.currentTarget); }}
+              className="relative hidden md:block"
+            >
+              <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                name="q"
+                aria-label="جستجو"
+                placeholder="جستجوی مراجع..."
+                className="h-9 w-64 rounded-full border border-border bg-muted/50 pr-9 pl-4 text-[13px] text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/10 focus:w-72"
+              />
+            </form>
+
+            <div className="h-6 w-px bg-border hidden sm:block mx-1" />
+
+            {/* Dark Mode Toggle */}
+            <ThemeToggle />
+
+            <a
+              href="/system"
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition"
+              aria-label="تنظیمات و وضعیت سامانه"
+              title="تنظیمات و وضعیت سامانه"
+            >
+              <Settings size={18} />
+            </a>
+            <button
+              type="button"
+              onClick={() => { void handleLogout(); }}
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition"
+              title="خروج از سیستم"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </header>
+
+        {/* Mobile Subtitle */}
+        {subtitle && (
+          <div className="sm:hidden border-b border-border bg-card/50 px-4 py-2">
+            <h2 className="text-[13px] font-bold text-foreground">{title}</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
+          </div>
+        )}
+
+        {/* Page Content */}
+        <div className="flex-1 p-4 sm:p-6 md:p-8">
+          {children}
+        </div>
+      </section>
+    </main>
+  );
+}

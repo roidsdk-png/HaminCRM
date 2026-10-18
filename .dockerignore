@@ -1,0 +1,12 @@
+.git
+.next
+.vinext
+.wrangler
+.sites-runtime
+node_modules
+dist
+data
+backups
+*.log
+.dev.vars
+.env*

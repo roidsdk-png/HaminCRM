@@ -1,30 +1,341 @@
-import { Activity, ArrowLeft, Bot, CheckCircle2, ClipboardCheck, Database, HeartHandshake, MessageSquareText, RadioTower, Users } from 'lucide-react';
-import type { ReactNode } from 'react';
+import {
+  ArrowRight,
+  ChevronLeft,
+  ClipboardCheck,
+  HeartHandshake,
+  MessageSquareText,
+  Users,
+  Activity,
+  BarChart3,
+} from 'lucide-react';
 import { getDashboardData } from '@/lib/dashboard-data';
 import { getChatGPTUser, chatGPTSignInPath } from '@/app/chatgpt-auth';
 import { CrmShell } from '@/components/crm-shell';
-import { ActivityMixChart, SourceBars, SourceChart } from '@/components/dashboard-charts';
+import { ActivityMixChart, SourceChart } from '@/components/dashboard-charts';
+import { can, getAdminRole } from '@/lib/admin-access';
+import { PageAccessDenied } from '@/components/page-access-denied';
+import { BrandLogo } from '@/components/brand-logo';
 
 const fa = new Intl.NumberFormat('fa-IR');
-const sourceCatalog = [
-  { slug: 'bale-advisor', name: 'مشاور هوشمند بله', platform: 'بله', kind: 'گفتگو', icon: Bot }, { slug: 'eitaa-advisor', name: 'مشاور هوشمند ایتا', platform: 'ایتا', kind: 'گفتگو', icon: MessageSquareText },
-  { slug: 'psytest-1', name: 'آزمون شخصیت', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck }, { slug: 'psytest-2', name: 'آزمون اضطراب', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck },
-  { slug: 'psytest-3', name: 'آزمون افسردگی', platform: 'وب‌اپ', kind: 'آزمون', icon: ClipboardCheck }, { slug: 'matchhamin', name: 'کی مناسب منه؟', platform: 'بله', kind: 'همسان‌گزینی', icon: HeartHandshake },
-];
+
 export const dynamic = 'force-dynamic';
-export default async function Home() {
-  const user = await getChatGPTUser(); if (!user && process.env.NODE_ENV !== 'development') return <SignIn />;
-  const data = await getDashboardData(); const sourceData = data.sourceActivity.map((item) => ({ name: item.name, value: item.messages + item.tests + item.profiles })); const aiShare = data.messages ? Math.round(data.aiMessages / data.messages * 100) : 0;
-  return <CrmShell title="نمای کلی" subtitle="آمار یکپارچه ربات‌ها، گفتگوها و آزمون‌ها"><div className="mx-auto max-w-[1500px] space-y-5 p-4 md:p-8">
-    <section className="surface flex flex-col justify-between gap-4 overflow-hidden rounded-3xl border border-[#183b45] bg-[#102a35] p-5 text-white md:flex-row md:items-center"><div className="flex items-center gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#b9ef72] text-[#102a35]"><RadioTower size={22}/></span><div><h2 className="font-black">مرکز دریافت داده فعال است</h2><p className="mt-1 text-sm text-white/60">آخرین وضعیت همه منابع در یک نما</p></div></div><div className="flex flex-wrap gap-2"><Status label="منابع فعال" value={`${fa.format(data.activeSources)} از ${fa.format(sourceCatalog.length)}`} good={data.activeSources > 0}/><Status label="نسبت پاسخ AI" value={`${fa.format(aiShare)}٪`} good={data.messages > 0}/><a href="/system" className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-3 text-sm font-bold hover:bg-white/13"><Activity size={17}/>سلامت سامانه</a></div></section>
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric href="/users" label="کاربران یکتا" value={data.contacts} detail="پرونده‌های ثبت‌شده" icon={Users} color="emerald"/><Metric href="/conversations" label="پیام‌های ثبت‌شده" value={data.messages} detail={`${fa.format(data.aiMessages)} پاسخ هوش مصنوعی`} icon={MessageSquareText} color="blue"/><Metric href="/tests" label="آزمون‌های تکمیل‌شده" value={data.tests} detail="همراه تمام پاسخ‌ها" icon={ClipboardCheck} color="amber"/><Metric href="/matchmaking" label="پروفایل‌های ازدواج" value={data.matchProfiles} detail="هر تلاش به‌صورت مستقل" icon={HeartHandshake} color="pink"/></div>
-    <div className="grid gap-5 xl:grid-cols-[1.5fr_.7fr]"><ChartCard title="فعالیت هفت روز اخیر" description="مقایسه پیام کاربران، پاسخ‌های هوش مصنوعی و آزمون‌ها"><div className="mb-3 flex flex-wrap gap-4 text-xs font-bold text-slate-500"><Legend color="#0b6b5b" label="پیام کاربر"/><Legend color="#60a5fa" label="پاسخ AI"/><Legend color="#f59e0b" label="آزمون" line/></div><ActivityMixChart data={data.dailyBreakdown}/></ChartCard><ChartCard title="ترکیب داده‌ها" description="سهم هر منبع از کل اطلاعات"><SourceChart data={sourceData}/><div className="grid gap-2 border-t pt-4">{sourceData.filter((item) => item.value).slice(0, 5).map((item, index) => <div key={item.name} className="flex items-center justify-between gap-3 text-xs"><span className="flex min-w-0 items-center gap-2 truncate text-slate-600"><i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: ['#0b6b5b','#3b82f6','#f59e0b','#db2777','#8b5cf6'][index] }}/>{item.name}</span><b>{fa.format(item.value)}</b></div>)}</div></ChartCard></div>
-    <div className="grid gap-5 xl:grid-cols-[.75fr_1.25fr]"><ChartCard title="مقایسه عملکرد منابع" description="مجموع گفتگو، آزمون و پروفایل"><SourceBars data={sourceData}/>{!sourceData.some((item) => item.value) && <EmptyChart/>}</ChartCard><section><div className="mb-3 flex items-end justify-between"><div><h2 className="font-black">وضعیت منابع</h2><p className="mt-1 text-sm text-slate-500">اتصال شش سرویس فعلی</p></div><a href="/sources" className="inline-flex items-center gap-1 text-sm font-bold text-[#0b6b5b]">مدیریت منابع <ArrowLeft size={15}/></a></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{sourceCatalog.map((source) => { const connected = data.sourceSlugs.includes(source.slug); return <a href="/sources" key={source.slug} className="surface group rounded-2xl border bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-200"><div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-[#0b6b5b]"><source.icon size={19}/></span><span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-bold ${connected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}><i className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-slate-300'}`}/>{connected ? 'متصل' : 'در انتظار'}</span></div><h3 className="mt-4 text-sm font-black">{source.name}</h3><p className="mt-1 text-xs text-slate-500">{source.platform} · {source.kind}</p></a>; })}</div></section></div>
-  </div></CrmShell>;
+
+function formatRelativeTime(timestamp: number | null | undefined): string {
+  if (!timestamp) return 'اخیراً';
+  const now = Date.now();
+  const timeMs = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
+  const diffMinutes = Math.max(1, Math.floor((now - timeMs) / (1000 * 60)));
+
+  if (diffMinutes < 60) return `${fa.format(diffMinutes)} دقیقه پیش`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${fa.format(diffHours)} ساعت پیش`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${fa.format(diffDays)} روز پیش`;
 }
-function Status({ label, value, good }: { label: string; value: string; good: boolean }) { return <div className="min-w-28 rounded-xl border border-white/10 bg-white/8 px-4 py-2.5"><p className="text-xs text-white/50">{label}</p><p className="mt-1 flex items-center gap-1.5 text-sm font-black">{good && <CheckCircle2 size={14} className="text-[#b9ef72]"/>}{value}</p></div>; }
-function Metric({ href, label, value, detail, icon: Icon, color }: { href: string; label: string; value: number; detail: string; icon: typeof Users; color: 'emerald'|'blue'|'amber'|'pink' }) { const tones = { emerald: 'bg-emerald-50 text-emerald-700', blue: 'bg-blue-50 text-blue-600', amber: 'bg-amber-50 text-amber-600', pink: 'bg-pink-50 text-pink-600' }; return <a href={href} className="metric-card surface group rounded-2xl border bg-white p-5"><div className="flex items-start justify-between"><div><p className="text-sm text-slate-500">{label}</p><p className="mt-3 text-3xl font-black tracking-tight text-slate-800">{fa.format(value)}</p></div><span className={`grid h-11 w-11 place-items-center rounded-2xl ${tones[color]}`}><Icon size={21}/></span></div><div className="mt-4 flex items-center justify-between text-xs text-slate-400"><span>{detail}</span><ArrowLeft size={14} className="transition group-hover:-translate-x-1"/></div></a>; }
-function ChartCard({ title, description, children }: { title: string; description: string; children: ReactNode }) { return <section className="surface rounded-3xl border bg-white p-5 md:p-6"><div className="mb-4"><h2 className="font-black">{title}</h2><p className="mt-1 text-sm text-slate-500">{description}</p></div>{children}</section>; }
-function Legend({ color, label, line = false }: { color: string; label: string; line?: boolean }) { return <span className="flex items-center gap-2"><i className={line ? 'h-0.5 w-5 rounded-full' : 'h-2.5 w-2.5 rounded-sm'} style={{ background: color }}/>{label}</span>; }
-function EmptyChart() { return <div className="grid h-52 place-items-center text-center text-sm leading-7 text-slate-400">بعد از دریافت اولین داده، مقایسه منابع اینجا نمایش داده می‌شود.</div>; }
-function SignIn() { return <main className="grid min-h-screen place-items-center bg-[#102a35] p-6"><section className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl shadow-black/20"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#b9ef72] text-[#102a35]"><Database size={26}/></div><h1 className="mt-6 text-2xl font-black">مرکز مدیریت حامین</h1><p className="mt-3 text-sm leading-7 text-slate-500">برای مشاهده اطلاعات محرمانه با حساب مجاز وارد شوید.</p><a href={chatGPTSignInPath('/')} className="mt-7 block rounded-xl bg-[#0b6b5b] px-5 py-3 text-sm font-bold text-white">ورود امن به سامانه</a></section></main>; }
+
+export default async function Home() {
+  const user = await getChatGPTUser();
+  if (!user && process.env.NODE_ENV !== 'development') {
+    return <SignIn />;
+  }
+  if (!can(await getAdminRole(user), 'read')) return <PageAccessDenied />;
+
+  const data = await getDashboardData();
+  const sourcePieData = data.sourceActivity.map(s => ({
+    name: s.name,
+    value: s.messages + s.tests + s.profiles
+  }));
+
+  return (
+    <CrmShell title="داشبورد حامین چارت">
+      <div className="space-y-6 max-w-7xl mx-auto">
+
+        {/* ── Welcome Banner (Airy & Professional) ── */}
+        <section className="relative overflow-hidden rounded-3xl bg-card p-6 md:p-8 shadow-sm border border-border transition-colors duration-300">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3"></div>
+
+          <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary border border-primary/20">
+                {data.activeSources > 0 && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                  </span>
+                )}
+                {data.activeSources > 0
+                  ? `${fa.format(data.activeSources)} منبع آماده دریافت داده است`
+                  : 'هنوز منبعی برای دریافت داده فعال نشده است'}
+              </div>
+              <h1 className="text-2xl font-black md:text-3xl tracking-tight text-foreground">
+                گزارش عملکرد مرکز داده حامین
+              </h1>
+              <p className="max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+                به میز کار خود خوش آمدید. از این بخش می‌توانید آخرین گفتگوهای چت‌بات‌ها، نتایج جدید آزمون‌های روان‌شناسی و فرم کی مناسب ازدواجه را بررسی و مدیریت کنید.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <a
+                href="/conversations"
+                className="inline-flex items-center gap-2 rounded-2xl bg-primary px-6 py-3.5 text-[13px] font-bold text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90 hover:-translate-y-0.5"
+              >
+                <MessageSquareText size={18} />
+                بررسی گفتگوهای تازه
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Key Metrics ── */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <MetricCard
+            href="/conversations"
+            label="کل پیام‌های دریافتی"
+            value={fa.format(data.messages)}
+            detail={`${fa.format(data.aiMessages)} پاسخ توسط هوش مصنوعی`}
+            icon={MessageSquareText}
+            color="blue"
+          />
+          <MetricCard
+            href="/tests"
+            label="نتایج آزمون‌های روان‌شناسی"
+            value={fa.format(data.tests)}
+            detail="تست‌های تکمیل‌شده کاربران"
+            icon={ClipboardCheck}
+            color="amber"
+          />
+          <MetricCard
+            href="/matchmaking"
+            label="فرم‌های همسرگزینی"
+            value={fa.format(data.matchProfiles)}
+            detail="پرونده‌های در حال بررسی"
+            icon={HeartHandshake}
+            color="rose"
+          />
+          <MetricCard
+            href="/users"
+            label="تعداد کل مراجعان"
+            value={fa.format(data.contacts)}
+            detail="ثبت‌شده در دیتابیس"
+            icon={Users}
+            color="indigo"
+          />
+        </div>
+
+        {/* ── Charts & Analytics ── */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors duration-300">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-muted-foreground border border-border/50">
+                  <Activity size={18} />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-bold text-foreground">روند مراجعه و فعالیت (هفتگی)</h3>
+                  <p className="text-[11px] text-muted-foreground">حجم گفتگوها، آزمون‌ها و فرم‌های ازدواج در ۷ روز گذشته</p>
+                </div>
+              </div>
+              <a href="/reports" className="flex items-center gap-1 rounded-lg bg-muted px-3 py-1.5 text-[11px] font-bold text-muted-foreground hover:bg-muted/80 transition">
+                گزارش کامل
+                <ArrowRight size={12} className="rotate-180" />
+              </a>
+            </div>
+            <ActivityMixChart data={data.dailyBreakdown} />
+          </div>
+
+          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors duration-300">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-muted-foreground border border-border/50">
+                <BarChart3 size={18} />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-bold text-foreground">سهم فعالیت منابع</h3>
+                <p className="text-[11px] text-muted-foreground">تعداد و درصد پیام‌ها، آزمون‌ها و فرم‌ها</p>
+              </div>
+            </div>
+            <div className="mt-2">
+              <SourceChart data={sourcePieData} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Recent Activity Feeds ── */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Messages */}
+          <div className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
+            <div className="border-b border-border p-5 pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <MessageSquareText size={16} />
+                </span>
+                <h3 className="text-[14px] font-bold text-foreground">
+                  پیام‌های تازه مراجعان
+                </h3>
+              </div>
+              <a href="/conversations" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:opacity-80">
+                مشاهده همه
+              </a>
+            </div>
+            <div className="flex-1 p-3">
+              {data.recentMessages.length === 0 ? (
+                <div className="text-center py-10 text-[12px] text-muted-foreground border border-dashed border-border rounded-2xl mx-2 my-2">
+                  در حال حاضر هیچ پیامی دریافت نشده است.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {data.recentMessages.slice(0, 4).map((msg) => (
+                    <a
+                      key={msg.id}
+                      href={`/conversations/${msg.conversationId}`}
+                      className="group flex gap-3 p-3 rounded-2xl hover:bg-muted/50 transition border border-transparent hover:border-border"
+                    >
+                      <div className="h-11 w-11 shrink-0 rounded-full bg-muted text-muted-foreground grid place-items-center font-black text-sm group-hover:bg-blue-500/10 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {msg.contactName.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-foreground text-[13px] truncate">{msg.contactName}</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">{formatRelativeTime(msg.occurredAt)}</span>
+                        </div>
+                        <p className="text-[12px] text-muted-foreground line-clamp-1 mt-1">{msg.content}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-muted text-[10px] font-bold text-muted-foreground">
+                            بستر: {msg.sourceName}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-muted text-[10px] font-bold text-muted-foreground">
+                            {msg.role === 'assistant' ? 'پاسخ هوش مصنوعی' : 'پیام از طرف کاربر'}
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Tests */}
+          <div className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden flex flex-col transition-colors duration-300">
+            <div className="border-b border-border p-5 pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-500">
+                  <ClipboardCheck size={16} />
+                </span>
+                <h3 className="text-[14px] font-bold text-foreground">
+                  آخرین تست‌های تکمیل‌شده
+                </h3>
+              </div>
+              <a href="/tests" className="text-[11px] font-bold text-amber-600 dark:text-amber-500 hover:opacity-80">
+                مشاهده همه
+              </a>
+            </div>
+            <div className="flex-1 p-3">
+              {data.recentTests.length === 0 ? (
+                <div className="text-center py-10 text-[12px] text-muted-foreground border border-dashed border-border rounded-2xl mx-2 my-2">
+                  کارنامه‌ای برای نمایش وجود ندارد.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {data.recentTests.slice(0, 4).map((test) => (
+                    <a
+                      key={test.id}
+                      href={`/tests/${test.id}`}
+                      className="group flex gap-3 p-3 rounded-2xl hover:bg-muted/50 transition border border-transparent hover:border-border"
+                    >
+                      <div className="h-11 w-11 shrink-0 rounded-full bg-muted text-muted-foreground grid place-items-center font-black text-sm group-hover:bg-amber-500/10 group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">
+                        {test.contactName.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-foreground text-[13px] truncate">{test.contactName}</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">{formatRelativeTime(test.completedAt)}</span>
+                        </div>
+                        <p className="text-[12px] text-foreground/80 font-medium mt-1">
+                          {test.testKey === 'psytest-1' ? 'تست شخصیت‌شناسی' : test.testKey === 'psytest-2' ? 'تست اضطراب و استرس' : test.testKey === 'psytest-3' ? 'تست افسردگی' : test.testKey === 'honaz-test' ? 'آزمون هوناز' : test.testKey}
+                        </p>
+                        {test.aiAnalysis && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-1 leading-relaxed">
+                            {test.aiAnalysis}
+                          </p>
+                        )}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </CrmShell>
+  );
+}
+
+function MetricCard({
+  href,
+  label,
+  value,
+  detail,
+  icon: Icon,
+  color,
+}: {
+  href: string;
+  label: string;
+  value: string;
+  detail: string;
+  icon: typeof MessageSquareText;
+  color: 'blue' | 'amber' | 'rose' | 'indigo';
+}) {
+  const styles = {
+    blue: 'text-blue-600 bg-blue-500/10 border-blue-500/20 group-hover:bg-blue-600 group-hover:text-white dark:text-blue-400 dark:border-blue-400/20',
+    amber: 'text-amber-600 bg-amber-500/10 border-amber-500/20 group-hover:bg-amber-500 group-hover:text-white dark:text-amber-500 dark:border-amber-500/20',
+    rose: 'text-rose-600 bg-rose-500/10 border-rose-500/20 group-hover:bg-rose-500 group-hover:text-white dark:text-rose-400 dark:border-rose-400/20',
+    indigo: 'text-indigo-600 bg-indigo-500/10 border-indigo-500/20 group-hover:bg-indigo-600 group-hover:text-white dark:text-indigo-400 dark:border-indigo-400/20',
+  }[color];
+
+  return (
+    <a
+      href={href}
+      className="group relative overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 flex flex-col"
+    >
+      <div className="flex items-center justify-between mb-5">
+        <div className={`grid h-12 w-12 place-items-center rounded-2xl transition-colors border ${styles}`}>
+          <Icon size={24} />
+        </div>
+        <ChevronLeft size={20} className="text-muted-foreground transition group-hover:text-foreground group-hover:-translate-x-1" />
+      </div>
+      <div>
+        <h4 className="text-[13px] font-bold text-muted-foreground mb-1">{label}</h4>
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-black text-foreground tracking-tight">{value}</span>
+        </div>
+        <p className="mt-1.5 text-[11px] font-medium text-muted-foreground">{detail}</p>
+      </div>
+    </a>
+  );
+}
+
+function SignIn() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-background p-6 text-foreground" dir="rtl">
+      <section className="w-full max-w-md rounded-3xl bg-card p-8 text-center shadow-xl border border-border">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+          <BrandLogo className="h-8 w-8 text-primary-foreground" />
+        </div>
+        <h1 className="mt-6 text-2xl font-black text-foreground">سامانه مدیریت کلینیک</h1>
+        <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+          لطفاً برای مدیریت سرویس‌ها و بررسی گفتگوها وارد شوید.
+        </p>
+        <a
+          href={chatGPTSignInPath('/')}
+          className="mt-8 block rounded-2xl bg-primary px-5 py-4 text-[14px] font-bold text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90 hover:-translate-y-0.5"
+        >
+          ورود امن به پنل سیستم
+        </a>
+      </section>
+    </main>
+  );
+}

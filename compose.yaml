@@ -1,0 +1,61 @@
+services:
+  crm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hamin-social-crm
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:3010:8787"
+    volumes:
+      - ./data:/data
+      - ./backups:/backups
+      - ./.dev.vars:/app/.dev.vars:ro
+    env_file:
+      - ./.dev.vars
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  honaz-sync:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hamin-honaz-crm-sync
+    restart: unless-stopped
+    init: true
+    depends_on:
+      crm:
+        condition: service_healthy
+    volumes:
+      - /var/www/HonazTest/data:/honaz:ro
+      - ./data:/state
+    env_file:
+      - ./.dev.vars
+    environment:
+      HONAZ_CRM_URL: http://crm:8787/api/v1/events
+      HONAZ_DB_PATH: /honaz/quiz.db
+      HONAZ_QUESTIONS_PATH: /app/integrations/honaz/questions.json
+      HONAZ_LEGACY_QUESTIONS_PATH: /app/integrations/honaz/legacy-questions.json
+      HONAZ_SYNC_STATE_PATH: /state/honaz-sync-state.json
+    command: ["python3", "/app/scripts/honaz-sync.py"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/honaz-sync-heartbeat && find /tmp/honaz-sync-heartbeat -mmin -3 | grep -q ."]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

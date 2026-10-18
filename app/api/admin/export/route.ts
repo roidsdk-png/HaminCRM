@@ -9,7 +9,12 @@ export async function GET(request: Request) {
   if (!can(role, 'read')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const url = new URL(request.url); const type = url.searchParams.get('type') ?? 'users'; const format = url.searchParams.get('format') ?? 'csv';
   try {
-    const data = await getExportRows(type, { source: url.searchParams.get('source') ?? '', from: validDate(url.searchParams.get('from')), to: validDate(url.searchParams.get('to')) });
+    const data = await getExportRows(type, {
+      source: url.searchParams.get('source') ?? '', section: url.searchParams.get('section') ?? '',
+      province: url.searchParams.get('province') ?? '', gender: url.searchParams.get('gender') ?? '',
+      ageFrom: url.searchParams.get('ageFrom') ?? '', ageTo: url.searchParams.get('ageTo') ?? '',
+      from: validDate(url.searchParams.get('from')), to: validDate(url.searchParams.get('to')),
+    });
     await writeAudit(user, 'report.exported', 'report', type, { format, rows: data.rows.length });
     if (format === 'xls') return new Response(toExcelXml(data.headers, data.rows), { headers: { 'content-type': 'application/vnd.ms-excel; charset=utf-8', 'content-disposition': `attachment; filename="hamin-${type}.xls"`, 'cache-control': 'no-store' } });
     return new Response('\ufeff' + [data.headers, ...data.rows].map((row) => row.map(csvCell).join(',')).join('\r\n'), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="hamin-${type}.csv"`, 'cache-control': 'no-store' } });

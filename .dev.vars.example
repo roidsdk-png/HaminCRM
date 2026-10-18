@@ -1,0 +1,11 @@
+# Standalone administrator account
+ADMIN_EMAIL=owner@example.com
+ADMIN_PASSWORD=replace-with-a-long-random-password
+
+# At least 32 random characters each
+SESSION_SECRET=replace-with-at-least-32-random-characters
+BACKUP_SERVICE_TOKEN=replace-with-at-least-32-random-characters
+
+# Honaz synchronization (only required when the honaz-sync service is enabled)
+HONAZ_CRM_KEY=replace-with-the-honaz-source-key
+HONAZ_IP_HASH_KEY=replace-with-a-long-random-hmac-key

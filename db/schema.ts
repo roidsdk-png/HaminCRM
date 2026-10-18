@@ -8,7 +8,7 @@ const timestamps = {
 export const sources = sqliteTable('sources', {
   id: text('id').primaryKey(), slug: text('slug').notNull(), name: text('name').notNull(),
   kind: text('kind', { enum: ['chatbot', 'test', 'matchmaking'] }).notNull(),
-  platform: text('platform', { enum: ['bale', 'eitaa', 'web'] }).notNull(),
+  platform: text('platform', { enum: ['bale', 'eitaa', 'telegram', 'web'] }).notNull(),
   status: text('status', { enum: ['pending', 'active', 'paused'] }).notNull().default('pending'),
   credentialHash: text('credential_hash'), lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }), ...timestamps,
 }, (t) => [uniqueIndex('uq_sources_slug').on(t.slug)]);
@@ -20,13 +20,13 @@ export const contacts = sqliteTable('contacts', {
   metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
   firstSeenAt: integer('first_seen_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()), ...timestamps,
-}, (t) => [index('idx_contacts_source_external').on(t.sourceId, t.externalUserId), index('idx_contacts_source_anonymous').on(t.sourceId, t.anonymousId), index('idx_contacts_phone').on(t.phone)]);
+}, (t) => [index('idx_contacts_source_external').on(t.sourceId, t.externalUserId), index('idx_contacts_source_anonymous').on(t.sourceId, t.anonymousId), uniqueIndex('uq_contacts_source_ip').on(t.sourceId, t.ipHash), index('idx_contacts_phone').on(t.phone)]);
 
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(), sourceId: text('source_id').notNull().references(() => sources.id), contactId: text('contact_id').references(() => contacts.id),
   externalSessionId: text('external_session_id').notNull(), startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
   lastMessageAt: integer('last_message_at', { mode: 'timestamp' }).notNull(), messageCount: integer('message_count').notNull().default(0), ...timestamps,
-}, (t) => [uniqueIndex('uq_conversations_source_session').on(t.sourceId, t.externalSessionId), index('idx_conversations_last_message').on(t.lastMessageAt)]);
+}, (t) => [uniqueIndex('uq_conversations_source_contact_session').on(t.sourceId, t.contactId, t.externalSessionId), index('idx_conversations_last_message').on(t.lastMessageAt)]);
 
 export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(), sourceId: text('source_id').notNull().references(() => sources.id), conversationId: text('conversation_id').notNull().references(() => conversations.id),
@@ -79,6 +79,7 @@ export const auditLogs = sqliteTable('audit_logs', {
 export const administrators = sqliteTable('administrators', {
   id: text('id').primaryKey(), userId: text('user_id').notNull(), email: text('email').notNull(),
   role: text('role', { enum: ['owner', 'manager', 'viewer'] }).notNull(), active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  passwordHash: text('password_hash'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()), updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
 }, (t) => [uniqueIndex('uq_administrators_user').on(t.userId), uniqueIndex('uq_administrators_email').on(t.email)]);
 

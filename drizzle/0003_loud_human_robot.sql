@@ -1,0 +1,1 @@
+ALTER TABLE `administrators` ADD `password_hash` text;

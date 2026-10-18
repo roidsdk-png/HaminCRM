@@ -24,15 +24,17 @@ class CrmClient:
         self.api_key = api_key.strip()
         self.timeout = timeout
         self.outbox = Path(outbox_dir).expanduser() if outbox_dir.strip() else None
+        self._outbox_ready = self.outbox is None
         self._queue: queue.Queue[dict[str, Any] | Path] = queue.Queue()
         if self.enabled and self.outbox:
             try:
                 self.outbox.mkdir(parents=True, exist_ok=True)
+                self._outbox_ready = True
                 for item in sorted(self.outbox.glob("*.json")):
                     self._queue.put_nowait(item)
             except OSError:
                 logging.exception("CRM outbox could not be initialized")
-                self.outbox = None
+                self._outbox_ready = False
         self._worker = threading.Thread(target=self._run, name="crm-sender", daemon=True)
         self._worker.start()
 
@@ -41,7 +43,7 @@ class CrmClient:
         return bool(self.url and self.source and self.api_key)
 
     def send(self, event_id: str, event_type: str, payload: dict[str, Any], occurred_at: str | None = None) -> bool:
-        if not self.enabled:
+        if not self.enabled or not self._outbox_ready:
             return False
         event = {"eventId": event_id, "type": event_type, "occurredAt": occurred_at or datetime.now(timezone.utc).isoformat(), "payload": payload}
         try:
@@ -56,6 +58,7 @@ class CrmClient:
         return self.send(event_id, "message.created", {"sessionId": session_id, "userId": user_id, "role": role, "content": content, **extra})
 
     def _run(self) -> None:
+        consecutive_failures = 0
         while True:
             queued = self._queue.get()
             event = None
@@ -66,11 +69,13 @@ class CrmClient:
                 self._deliver(event)
                 if isinstance(queued, Path):
                     queued.unlink(missing_ok=True)
+                consecutive_failures = 0
             except Exception:
                 event_id = event.get("eventId") if event else "unknown"
                 logging.exception("CRM delivery failed for event %s", event_id)
                 if isinstance(queued, Path):
-                    time.sleep(5)
+                    time.sleep(min(60, 5 * 2 ** min(consecutive_failures, 4)))
+                    consecutive_failures += 1
                     self._queue.put_nowait(queued)
             finally:
                 self._queue.task_done()
@@ -106,7 +111,14 @@ class CrmClient:
                 with urllib.request.urlopen(request, timeout=self.timeout) as response:
                     if 200 <= response.status < 300:
                         return
-            except (urllib.error.URLError, TimeoutError):
+                    raise RuntimeError(f"CRM returned HTTP {response.status}")
+            except urllib.error.HTTPError as error:
+                if error.code < 500 and error.code not in (408, 429):
+                    raise RuntimeError(f"CRM returned HTTP {error.code}") from error
+                if attempt == 2:
+                    raise
+                time.sleep(0.25 * (2**attempt))
+            except (urllib.error.URLError, TimeoutError, RuntimeError):
                 if attempt == 2:
                     raise
                 time.sleep(0.25 * (2**attempt))

@@ -12,8 +12,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const role = await getAdminRole(user);
   if (!can(role, 'manage')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const origin = request.headers.get('origin'); const host = request.headers.get('host');
-  if (origin && host && new URL(origin).host !== host) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
-  const { id } = await params; const body = await request.json() as { action?: string };
+  if (origin && host && !isSameOrigin(origin, host)) return NextResponse.json({ error: 'درخواست از مبدأ نامعتبر است' }, { status: 403 });
+  const { id } = await params;
+  let body: { action?: string };
+  try {
+    body = await request.json() as { action?: string };
+  } catch {
+    return NextResponse.json({ error: 'بدنه درخواست نامعتبر است' }, { status: 400 });
+  }
   const db = getDb(); const [source] = await db.select().from(sources).where(eq(sources.id, id)).limit(1);
   if (!source) return NextResponse.json({ error: 'Source not found' }, { status: 404 });
   if (body.action === 'rotate') {
@@ -29,7 +35,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await writeAudit(user, `source.${status}`, 'source', id, { slug: source.slug });
     return NextResponse.json({ status });
   }
-  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  return NextResponse.json({ error: 'عملیات درخواستی نامعتبر است' }, { status: 400 });
+}
+
+function isSameOrigin(origin: string, host: string) {
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
 }
 
 function createSecret() {

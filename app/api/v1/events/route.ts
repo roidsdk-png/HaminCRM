@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateSource, ingest } from '@/lib/ingestion';
+import { authenticateSource, ingest, IngestionProcessingError } from '@/lib/ingestion';
 
 export async function GET() { return NextResponse.json({ service: 'Hamin CRM ingestion', status: 'ok', version: 1 }); }
 
@@ -20,5 +20,5 @@ export async function POST(request: Request) {
       results.push({ eventId: event.eventId, status: await ingest(source.id, { eventId: event.eventId, type: event.type, occurredAt: event.occurredAt, payload: event.payload as Record<string, unknown> }) });
     }
     return NextResponse.json({ accepted: results.length, results }, { status: 202 });
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid request' }, { status: 400 }); }
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid request' }, { status: error instanceof IngestionProcessingError ? 503 : 400 }); }
 }
