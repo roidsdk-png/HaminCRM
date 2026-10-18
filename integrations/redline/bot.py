@@ -44,6 +44,8 @@ def read_settings() -> dict[str, str]:
         "CRM_SOURCE": "redline-test",
         "CRM_API_KEY": "",
         "CRM_OUTBOX_DIR": str(ROOT / "crm-outbox"),
+        "CRM_TELEGRAM_SOURCE": "redline-telegram",
+        "CRM_TELEGRAM_API_KEY": "",
     }
     env_file = Path(os.environ.get("BALE_ENV_FILE", ROOT / ".env"))
     if env_file.exists():

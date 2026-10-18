@@ -29,16 +29,31 @@ class CrmIntegrationTests(unittest.TestCase):
             attempt = store.complete_attempt(123, "male", questions, answers, "گزارش")
 
             reporter = RedlineCrmReporter.__new__(RedlineCrmReporter)
-            reporter.client = FakeClient()
+            reporter.clients = {"bale": FakeClient(), "telegram": FakeClient()}
+            reporter.client = reporter.clients["bale"]
             self.assertTrue(reporter.completed(attempt, store.participant(123), questions, answers))
             event = reporter.client.events[0]
             self.assertEqual(event["event_type"], "test.completed")
-            self.assertEqual(event["event_id"], f"redline-completed:{attempt['attemptId']}")
+            self.assertEqual(event["event_id"], f"redline-bale-completed:{attempt['attemptId']}")
             self.assertEqual(event["payload"]["profile"]["userId"], "123")
             self.assertEqual(event["payload"]["profile"]["name"], "علی نمونه")
             self.assertEqual(len(event["payload"]["answers"]), 20)
             self.assertIn("goodPercent", event["payload"]["scores"])
             self.assertIn("indicators", event["payload"]["result"])
+
+            telegram_participant = {
+                "userId": "456",
+                "firstName": "کاربر",
+                "lastName": "تلگرام",
+                "username": "tg_user",
+                "platform": "telegram",
+            }
+            self.assertTrue(reporter.completed(attempt, telegram_participant, questions, answers))
+            telegram_event = reporter.clients["telegram"].events[0]
+            self.assertEqual(telegram_event["event_id"], f"redline-telegram-completed:{attempt['attemptId']}")
+            self.assertEqual(telegram_event["payload"]["profile"]["userId"], "456")
+            self.assertEqual(telegram_event["payload"]["profile"]["platform"], "telegram")
+            self.assertEqual(telegram_event["payload"]["trackingCode"], f"RL-TG-{attempt['attemptId']}")
             store.connection.close()
 
 

@@ -17,12 +17,24 @@ class RedlineCrmReporter:
     def __init__(self, settings: dict[str, str] | None = None) -> None:
         settings = settings or {}
         default_outbox = Path(__file__).resolve().parent / "crm-outbox"
-        self.client = CrmClient(
-            settings.get("CRM_URL", os.getenv("CRM_URL", "")),
-            settings.get("CRM_SOURCE", os.getenv("CRM_SOURCE", "redline-test")),
-            settings.get("CRM_API_KEY", os.getenv("CRM_API_KEY", "")),
-            outbox_dir=settings.get("CRM_OUTBOX_DIR", os.getenv("CRM_OUTBOX_DIR", str(default_outbox))),
-        )
+        base_url = settings.get("CRM_URL", os.getenv("CRM_URL", ""))
+        outbox = Path(settings.get("CRM_OUTBOX_DIR", os.getenv("CRM_OUTBOX_DIR", str(default_outbox))))
+        self.clients = {
+            "bale": CrmClient(
+                base_url,
+                settings.get("CRM_SOURCE", os.getenv("CRM_SOURCE", "redline-test")),
+                settings.get("CRM_API_KEY", os.getenv("CRM_API_KEY", "")),
+                outbox_dir=str(outbox),
+            ),
+            "telegram": CrmClient(
+                base_url,
+                settings.get("CRM_TELEGRAM_SOURCE", os.getenv("CRM_TELEGRAM_SOURCE", "redline-telegram")),
+                settings.get("CRM_TELEGRAM_API_KEY", os.getenv("CRM_TELEGRAM_API_KEY", "")),
+                outbox_dir=str(outbox / "telegram"),
+            ),
+        }
+        # Compatibility for the Bale backfill utility.
+        self.client = self.clients["bale"]
 
     def completed(
         self,
@@ -50,27 +62,34 @@ class RedlineCrmReporter:
                 }
             )
 
-        chat_id = str(attempt["chatId"])
+        platform = str(participant.get("platform") or "bale").strip().lower()
+        if platform not in self.clients:
+            platform = "bale"
+        client = self.clients[platform]
+        user_id = str(participant.get("userId") or attempt["chatId"])
         attempt_id = str(attempt["attemptId"])
         name = " ".join(
             value.strip()
             for value in (str(participant.get("firstName") or ""), str(participant.get("lastName") or ""))
             if value.strip()
         )
-        return self.client.send(
-            event_id=f"redline-completed:{attempt_id}",
+        platform_code = "TG" if platform == "telegram" else "BL"
+        username = str(participant.get("username") or "").strip().lstrip("@") or None
+        return client.send(
+            event_id=f"redline-{platform}-completed:{attempt_id}",
             event_type="test.completed",
             occurred_at=iso_time(float(attempt["completedAt"])),
             payload={
                 "attemptId": attempt_id,
                 "testKey": "redline-marriage-awareness",
-                "trackingCode": f"RL-{attempt_id}",
+                "trackingCode": f"RL-{platform_code}-{attempt_id}",
                 "profile": {
-                    "userId": chat_id,
+                    "userId": user_id,
                     "name": name,
                     "gender": attempt.get("gender"),
-                    "baleUsername": participant.get("username"),
-                    "platform": "bale",
+                    f"{platform}Username": username,
+                    "platform": platform,
+                    "metadata": {"platform": platform, "username": username},
                 },
                 "answers": normalized_answers,
                 "scores": attempt.get("scores", {}),

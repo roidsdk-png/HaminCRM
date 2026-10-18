@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>آزمون خط قرمزها و شناخت پیش از ازدواج | حامین یار</title>
+
+  <!-- Base URL -->
+  <base href="/redline/">
+
+  <!-- فونت وزیرمتن -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root {
+      --bg: #090c15;
+      --card-bg: rgba(22, 27, 44, 0.7);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+
+      --rose-1: #f43f5e;
+      --rose-2: #e11d48;
+      --rose-glow: rgba(244, 63, 94, 0.25);
+
+      --amber-1: #fbbf24;
+      --emerald-1: #10b981;
+      --blue-1: #38bdf8;
+      --purple-1: #c084fc;
+
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      direction: rtl;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem 1rem 2.5rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* اتمسفر نورهای نئونی پس‌زمینه */
+    .ambient-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .glow-1 {
+      position: absolute;
+      top: -10%;
+      right: -10%;
+      width: 340px;
+      height: 340px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.16) 0%, transparent 70%);
+      filter: blur(50px);
+    }
+    .glow-2 {
+      position: absolute;
+      top: 45%;
+      left: -15%;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(251, 191, 36, 0.13) 0%, transparent 70%);
+      filter: blur(50px);
+    }
+    .glow-3 {
+      position: absolute;
+      bottom: -10%;
+      right: 20%;
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(192, 132, 252, 0.12) 0%, transparent 70%);
+      filter: blur(60px);
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+
+    /* هدر سامانه */
+    .hero {
+      text-align: center;
+      padding: 0.6rem 0.5rem 0.2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.85rem;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      border-radius: 100px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #fda4af;
+      box-shadow: 0 4px 15px rgba(244, 63, 94, 0.15);
+    }
+
+    .hero h1 {
+      font-size: 1.45rem;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+
+    .hero p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 390px;
+    }
+
+    /* کارت‌های شیشه‌ای */
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* انتخاب جنسیت */
+    .gender-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .gender-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1.1rem 0.5rem;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.22s ease;
+    }
+
+    .gender-btn .icon {
+      font-size: 2rem;
+    }
+
+    .gender-btn .label {
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .gender-btn.active-male {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);
+    }
+
+    .gender-btn.active-female {
+      background: rgba(244, 63, 94, 0.12);
+      border-color: #f43f5e;
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.25);
+    }
+
+    /* دکمه‌های اکشن */
+    .btn-primary {
+      width: 100%;
+      padding: 0.95rem 1.2rem;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--rose-1) 0%, var(--rose-2) 100%);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 24px var(--rose-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 0.85rem 1.2rem;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+
+    /* تراشه‌های اطلاعاتی */
+    .chips-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .chip-item {
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.25rem 0.6rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    /* نوار پیشرفت آزمون */
+    .quiz-progress-bar-wrap {
+      width: 100%;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .quiz-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f43f5e, #fbbf24);
+      width: 5%;
+      border-radius: 100px;
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .quiz-nav-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* کارت سوال */
+    .question-box {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.5;
+      padding: 0.5rem 0.2rem;
+    }
+
+    /* گزینه‌های آزمون */
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .option-card {
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      padding: 0.95rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    .option-card:hover {
+      border-color: rgba(244, 63, 94, 0.4);
+      background: rgba(244, 63, 94, 0.06);
+    }
+
+    .option-card:active {
+      transform: scale(0.985);
+    }
+
+    .option-card.selected {
+      border-color: var(--rose-1);
+      background: rgba(244, 63, 94, 0.15);
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.25);
+    }
+
+    .opt-key {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      flex-shrink: 0;
+    }
+
+    .option-card.selected .opt-key {
+      background: var(--rose-1);
+      color: #ffffff;
+    }
+
+    .opt-text {
+      flex: 1;
+      font-size: 0.88rem;
+      color: #e2e8f0;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+
+    /* نتایج نهایی (کارنامه) */
+    .results-overview {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 0.4rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .metric-val {
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .metric-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .metric-good .metric-val { color: #34d399; }
+    .metric-improve .metric-val { color: #fbbf24; }
+    .metric-consult .metric-val { color: #f87171; }
+
+    /* شاخص‌های رابطه */
+    .indicators-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .indicator-card {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .indicator-name {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .indicator-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+    }
+
+    .tag-good {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .tag-improve {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .tag-consult {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* جعبه توصیه نهایی */
+    .advice-box {
+      background: linear-gradient(145deg, rgba(244, 63, 94, 0.1) 0%, rgba(251, 191, 36, 0.08) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      font-size: 0.85rem;
+      color: #f1f5f9;
+      line-height: 1.7;
+    }
+
+    /* اسپینر لودینگ */
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #f43f5e;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow">
+    <div class="glow-1"></div>
+    <div class="glow-2"></div>
+    <div class="glow-3"></div>
+  </div>
+
+  <div class="container">
+    <!-- هدر عمومی -->
+    <header class="hero">
+      <div class="hero-badge">
+        <span>🛑</span>
+        <span>سامانه شناخت پیش از ازدواج</span>
+      </div>
+      <h1>آزمون خط قرمزهای ازدواج</h1>
+      <p>ارزیابی علمی ۲۰ مؤلفه حیاتی ارتباطی جهت شناخت مرزها، توافق‌ها و تعارضات پیش از ازدواج</p>
+    </header>
+
+    <!-- ══════════ صفحه ۱: انتخاب جنسیت و شروع ══════════ -->
+    <div id="screen-welcome" class="glass-card">
+      <div style="font-size: 0.95rem; font-weight: 800; color: #ffffff;">
+        جنسیت خود را انتخاب کنید:
+      </div>
+
+      <div class="gender-grid">
+        <div id="btn-male" class="gender-btn active-male" onclick="setGender('male')">
+          <span class="icon">👨</span>
+          <span class="label">پسر (آقا)</span>
+        </div>
+        <div id="btn-female" class="gender-btn" onclick="setGender('female')">
+          <span class="icon">👩</span>
+          <span class="label">دختر (خانم)</span>
+        </div>
+      </div>
+
+      <div class="chips-row">
+        <span class="chip-item">⏱ ۵ دقیقه</span>
+        <span class="chip-item">📋 ۲۰ سوال</span>
+        <span class="chip-item">📊 تحلیل جامع و فوری</span>
+      </div>
+
+      <button class="btn-primary" onclick="startQuiz()">
+        <span>شروع آزمون</span>
+        <span>←</span>
+      </button>
+    </div>
+
+    <!-- ══════════ صفحه ۲: پرسشنامه ۲۰ سوال ══════════ -->
+    <div id="screen-quiz" class="glass-card" style="display: none;">
+      <div class="quiz-nav-top">
+        <span id="question-progress-label">سوال ۱ از ۲۰</span>
+        <span id="question-percent-label">۵٪</span>
+      </div>
+
+      <div class="quiz-progress-bar-wrap">
+        <div id="quiz-progress-bar" class="quiz-progress-bar-fill"></div>
+      </div>
+
+      <div id="question-title" class="question-box">
+        در حال بارگذاری سوال...
+      </div>
+
+      <div id="options-container" class="options-list">
+        <!-- گزینه‌ها داینامیک اضافه می‌شوند -->
+      </div>
+
+      <div style="display: flex; gap: 0.6rem; margin-top: 0.5rem;">
+        <button id="btn-prev-question" class="btn-secondary" style="flex: 1;" onclick="prevQuestion()">
+          <span>→</span>
+          <span>سوال قبلی</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════ صفحه ۳: نمایش نتایج و کارنامه ══════════ -->
+    <div id="screen-result" class="glass-card" style="display: none;">
+      <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.4rem;">
+        <div style="font-size: 2.2rem;">📊</div>
+        <div style="font-size: 1.25rem; font-weight: 900; color: #ffffff;">کارنامه تحلیلی خط قرمزها</div>
+        <div style="font-size: 0.78rem; color: #94a3b8;">کد پیگیری: <span id="res-tracking-code" style="color: #fbbf24; font-family: monospace;">---</span></div>
+      </div>
+
+      <!-- ۳ شاخص کلی -->
+      <div class="results-overview">
+        <div class="metric-card metric-good">
+          <span id="res-good-pct" class="metric-val">۰٪</span>
+          <span class="metric-label">رفتار سازنده</span>
+        </div>
+        <div class="metric-card metric-improve">
+          <span id="res-improve-pct" class="metric-val">۰٪</span>
+          <span class="metric-label">نیاز به اصلاح</span>
+        </div>
+        <div class="metric-card metric-consult">
+          <span id="res-consult-pct" class="metric-val">۰٪</span>
+          <span class="metric-label">نیاز به مشاوره</span>
+        </div>
+      </div>
+
+      <!-- راهکار و تحلیل اختصاصی -->
+      <div id="res-advice" class="advice-box">
+        در حال دریافت توصیه مشاور...
+      </div>
+
+      <!-- تفکیک شاخص‌ها -->
+      <div>
+        <div style="font-size: 0.92rem; font-weight: 800; color: #ffffff; margin-bottom: 0.6rem;">
+          وضعیت شاخص‌های رابطه:
+        </div>
+        <div id="res-indicators-list" class="indicators-list">
+          <!-- شاخص‌ها تزریق می‌شوند -->
+        </div>
+      </div>
+
+      <!-- دکمه‌های پایانی -->
+      <div style="display: flex; gap: 0.65rem; margin-top: 0.5rem;">
+        <button class="btn-secondary" style="flex: 1;" onclick="restartQuiz()">
+          <span>🔄</span>
+          <span>آزمون مجدد</span>
+        </button>
+        <button class="btn-primary" style="flex: 2;" onclick="shareOrClose()">
+          <span>اشتراک‌گذاری کارنامه</span>
+          <span>📤</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // فعال‌سازی Telegram WebApp
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      try {
+        tg.ready();
+        tg.expand();
+        tg.setHeaderColor('#090c15');
+        tg.setBackgroundColor('#090c15');
+      } catch (e) {}
+    }
+
+    function haptic(type = 'light') {
+      try {
+        if (tg?.HapticFeedback) {
+          if (type === 'light') tg.HapticFeedback.impactOccurred('light');
+          else if (type === 'medium') tg.HapticFeedback.impactOccurred('medium');
+          else if (type === 'heavy') tg.HapticFeedback.impactOccurred('heavy');
+          else if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+        }
+      } catch (e) {}
+    }
+
+    // تبدیل اعداد انگلیسی به فارسی
+    function toPersianDigits(num) {
+      const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+      return num.toString().replace(/[0-9]/g, function (d) {
+        return p[+d];
+      });
+    }
+
+    // متغیرهای وضعیت
+    let selectedGender = 'male';
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let userAnswers = {};
+    let tgUser = null;
+
+    if (tg?.initDataUnsafe?.user) {
+      tgUser = tg.initDataUnsafe.user;
+    }
+
+    function setGender(gender) {
+      selectedGender = gender;
+      haptic('light');
+      const bMale = document.getElementById('btn-male');
+      const bFemale = document.getElementById('btn-female');
+      if (gender === 'male') {
+        bMale.className = 'gender-btn active-male';
+        bFemale.className = 'gender-btn';
+      } else {
+        bMale.className = 'gender-btn';
+        bFemale.className = 'gender-btn active-female';
+      }
+    }
+
+    async function startQuiz() {
+      haptic('medium');
+      const btn = event.currentTarget;
+      btn.innerHTML = '<div class="spinner"></div><span>در حال دریافت سوالات...</span>';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`api/questions?gender=${selectedGender}`);
+        const data = await res.json();
+        if (!data.ok || !data.questions) {
+          alert('خطا در دریافت سوالات. لطفاً مجدداً تلاش فرمایید.');
+          btn.innerHTML = '<span>شروع آزمون</span><span>←</span>';
+          btn.disabled = false;
+          return;
+        }
+
+        currentQuestions = data.questions;
+        currentIndex = 0;
+        userAnswers = {};
+
+        document.getElementById('screen-welcome').style.display = 'none';
+        document.getElementById('screen-quiz').style.display = 'flex';
+        renderQuestion();
+      } catch (err) {
+        alert('خطای اتصال به سرور: ' + err.message);
+        btn.innerHTML = '<span>شروع آزمون</span><span>←</span>';
+        btn.disabled = false;
+      }
+    }
+
+    function renderQuestion() {
+      if (currentIndex < 0 || currentIndex >= currentQuestions.length) return;
+      const q = currentQuestions[currentIndex];
+      const total = currentQuestions.length;
+
+      document.getElementById('question-progress-label').textContent = `سوال ${toPersianDigits(currentIndex + 1)} از ${toPersianDigits(total)}`;
+      const pct = Math.round(((currentIndex + 1) / total) * 100);
+      document.getElementById('question-percent-label').textContent = `${toPersianDigits(pct)}٪`;
+      document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
+
+      document.getElementById('question-title').textContent = q.title;
+
+      const optsContainer = document.getElementById('options-container');
+      optsContainer.innerHTML = '';
+
+      const savedAnswer = userAnswers[q.id];
+
+      q.options.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'option-card' + (savedAnswer === opt.key ? ' selected' : '');
+        div.onclick = () => selectOption(q.id, opt.key);
+        div.innerHTML = `
+          <div class="opt-key">${opt.key}</div>
+          <div class="opt-text">${opt.text}</div>
+        `;
+        optsContainer.appendChild(div);
+      });
+
+      document.getElementById('btn-prev-question').style.display = currentIndex > 0 ? 'flex' : 'none';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function selectOption(questionId, key) {
+      haptic('light');
+      userAnswers[questionId] = key;
+
+      if (currentIndex + 1 < currentQuestions.length) {
+        currentIndex++;
+        setTimeout(renderQuestion, 160);
+      } else {
+        submitQuiz();
+      }
+    }
+
+    function prevQuestion() {
+      if (currentIndex > 0) {
+        haptic('light');
+        currentIndex--;
+        renderQuestion();
+      }
+    }
+
+    async function submitQuiz() {
+      haptic('medium');
+      const optsContainer = document.getElementById('options-container');
+      optsContainer.innerHTML = `
+        <div style="text-align: center; padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+          <div class="spinner" style="width: 36px; height: 36px;"></div>
+          <div style="font-weight: 700; color: #f1f5f9;">در حال تحلیل علمی پاسخ‌ها و ثبت در سامانه...</div>
+        </div>
+      `;
+
+      const payload = {
+        gender: selectedGender,
+        answers: userAnswers,
+        chat_id: tgUser ? tgUser.id : 0,
+        first_name: tgUser ? (tgUser.first_name || '') : '',
+        last_name: tgUser ? (tgUser.last_name || '') : '',
+        username: tgUser ? (tgUser.username || '') : ''
+      };
+
+      try {
+        const res = await fetch('api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (!result.ok) {
+          alert('خطا در ثبت آزمون: ' + (result.error || 'ناشناخته'));
+          return;
+        }
+
+        displayResults(result);
+      } catch (err) {
+        alert('خطای ارسال نتایج: ' + err.message);
+      }
+    }
+
+    function displayResults(data) {
+      haptic('success');
+      document.getElementById('screen-quiz').style.display = 'none';
+      document.getElementById('screen-result').style.display = 'flex';
+
+      document.getElementById('res-tracking-code').textContent = data.trackingCode || '---';
+
+      const scores = data.scores || {};
+      document.getElementById('res-good-pct').textContent = `${toPersianDigits(scores.goodPercent || 0)}٪`;
+      document.getElementById('res-improve-pct').textContent = `${toPersianDigits(scores.improvePercent || 0)}٪`;
+      document.getElementById('res-consult-pct').textContent = `${toPersianDigits(scores.consultPercent || 0)}٪`;
+
+      document.getElementById('res-advice').textContent = data.recommendation || '';
+
+      const indContainer = document.getElementById('res-indicators-list');
+      indContainer.innerHTML = '';
+
+      const indicators = data.indicators || [];
+      indicators.forEach(ind => {
+        const div = document.createElement('div');
+        div.className = 'indicator-card';
+        let tagClass = 'tag-good';
+        let tagText = '✅ سازنده';
+        if (ind.status === 'consult') {
+          tagClass = 'tag-consult';
+          tagText = '🧭 مشاوره';
+        } else if (ind.status === 'improve') {
+          tagClass = 'tag-improve';
+          tagText = '⚠️ نیازمند اصلاح';
+        }
+        div.innerHTML = `
+          <div class="indicator-name">${ind.name}</div>
+          <div class="indicator-tag ${tagClass}">${tagText} (${toPersianDigits(ind.score)}٪)</div>
+        `;
+        indContainer.appendChild(div);
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function restartQuiz() {
+      haptic('medium');
+      currentIndex = 0;
+      userAnswers = {};
+      document.getElementById('screen-result').style.display = 'none';
+      document.getElementById('screen-welcome').style.display = 'flex';
+    }
+
+    function shareOrClose() {
+      haptic('medium');
+      const shareText = `من در «آزمون خط قرمزهای ازدواج» حامین یار شرکت کردم! پیشنهاد می‌کنم شما هم شرکت کنید: https://haminyar.ir/redline/`;
+      if (navigator.share) {
+        navigator.share({
+          title: 'آزمون خط قرمزهای ازدواج | حامین یار',
+          text: shareText,
+          url: 'https://haminyar.ir/redline/'
+        }).catch(() => {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareText).then(() => {
+          alert('لینک آزمون کپی شد!');
+        });
+      } else if (tg?.close) {
+        tg.close();
+      }
+    }
+  </script>
+</body>
+</html>

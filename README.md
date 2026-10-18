@@ -56,7 +56,7 @@ curl http://127.0.0.1:3010/api/health
 - `X-CRM-Source`: شناسه منبع
 - `X-CRM-Key`: کلید اختصاصی همان منبع
 
-قراردادها و نمونه کلاینت‌ها در [integrations/README.md](integrations/README.md) قرار دارند. اتصال کامل آزمون Redline نیز در `integrations/redline` نگهداری می‌شود.
+قراردادها و نمونه کلاینت‌ها در [integrations/README.md](integrations/README.md) قرار دارند. اتصال کامل آزمون Redline برای هر دو بستر بله و تلگرام، شامل ربات، وب‌سرور، رابط وب، reporter و تست‌ها، در `integrations/redline` نگهداری می‌شود. دو بستر با منبع و کلید مستقل ثبت می‌شوند تا آمارشان در CRM قابل تفکیک باشد.
 
 ## امنیت داده
 
