@@ -252,10 +252,10 @@ export default async function ReportsPage({
           />
           <MetricCard
             icon={HeartHandshake}
-            label="فرم کی مناسب ازدواجه تکمیل‌شده"
+            label="فرم‌های ازدواج ثبت‌شده"
             value={data.totals.matches}
             tone="rose"
-            hint="پروفایل‌های همسان‌گزینی تکمیل‌شده"
+            hint={`${fa.format(data.totals.completedMatches)} کامل · ${fa.format(data.totals.incompleteMatches)} ناتمام`}
           />
         </div>
 
@@ -479,7 +479,7 @@ function MetricCard({
 }
 
 function kindLabel(value: string) { return ({ chatbot: 'چت‌بات', test: 'آزمون', matchmaking: 'فرم ازدواج' } as Record<string, string>)[value] ?? value; }
-function platformLabel(value: string) { return ({ bale: 'بله', eitaa: 'ایتا', web: 'وب‌اپ' } as Record<string, string>)[value] ?? value; }
+function platformLabel(value: string) { return ({ bale: 'بله', eitaa: 'ایتا', telegram: 'تلگرام', web: 'وب‌اپ', all: 'مجموع بسترها' } as Record<string, string>)[value] ?? value; }
 
 function presetHref(filters: { source: string; section: string; province: string; gender: string; ageFrom: number | null; ageTo: number | null }, days: number, today: string) {
   const from = new Date();

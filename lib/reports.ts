@@ -1,11 +1,14 @@
+import { countableMatchProfiles } from '@/lib/match-data';
 import { sql, type SQL } from 'drizzle-orm';
 import { getDb } from '@/db';
 import locations from '@/lib/data/iran-locations.json';
+import { countableTestAttempts, normalizeTestFilter, testGroupKey, testGroupName, testSourceFilter, redlineSource } from '@/lib/test-catalog';
+import { activeConversations } from '@/lib/chat-data';
 
 export type ReportFilters = { source?: string; section?: string; from?: string; to?: string; province?: string; gender?: string; ageFrom?: string; ageTo?: string };
 type AppliedFilters = { source: string; section: string; province: string; gender: string; ageFrom: number | null; ageTo: number | null };
 export type ReportData = {
-  totals: { users: number; conversations: number; userMessages: number; ai: number; tests: number; matches: number };
+  totals: { users: number; conversations: number; userMessages: number; ai: number; tests: number; matches: number; completedMatches: number; incompleteMatches: number };
   daily: { day: string; users: number; userMessages: number; ai: number; tests: number; matches: number }[];
   sources: { slug: string; name: string }[];
   provinces: string[];
@@ -18,7 +21,7 @@ export type ReportData = {
 export async function getReportData(filters: ReportFilters): Promise<ReportData> {
   const normalized = normalizeRange(filters);
   const applied = normalizeDimensions(filters);
-  const empty: ReportData = { totals: { users: 0, conversations: 0, userMessages: 0, ai: 0, tests: 0, matches: 0 }, daily: [], sources: [], provinces: locations.map((item) => item.name), breakdown: [], range: normalized.range, applied, notice: [normalized.notice, ageNotice(filters)].filter(Boolean).join(' ') };
+  const empty: ReportData = { totals: { users: 0, conversations: 0, userMessages: 0, ai: 0, tests: 0, matches: 0, completedMatches: 0, incompleteMatches: 0 }, daily: [], sources: [], provinces: locations.map((item) => item.name), breakdown: [], range: normalized.range, applied, notice: [normalized.notice, ageNotice(filters)].filter(Boolean).join(' ') };
   try {
     const db = getDb(); const { from, to } = normalized.range;
     const sourceWhere = sourceFilter(applied);
@@ -26,34 +29,41 @@ export async function getReportData(filters: ReportFilters): Promise<ReportData>
     const [totals, daily, sources, breakdown] = await Promise.all([
       db.get<ReportData['totals']>(sql`SELECT
         (SELECT COUNT(*) FROM contacts c JOIN sources s ON s.id=c.source_id WHERE ${sourceWhere} AND ${personWhere} AND date(c.first_seen_at,'unixepoch') BETWEEN ${from} AND ${to}) users,
-        (SELECT COUNT(*) FROM conversations v JOIN sources s ON s.id=v.source_id LEFT JOIN contacts c ON c.id=v.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(v.started_at,'unixepoch') BETWEEN ${from} AND ${to}) conversations,
+        (SELECT COUNT(*) FROM ${activeConversations()} v JOIN sources s ON s.id=v.source_id LEFT JOIN contacts c ON c.id=v.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(v.started_at,'unixepoch') BETWEEN ${from} AND ${to}) conversations,
         (SELECT COUNT(*) FROM messages m JOIN sources s ON s.id=m.source_id LEFT JOIN conversations v ON v.id=m.conversation_id LEFT JOIN contacts c ON c.id=COALESCE(m.contact_id,v.contact_id) WHERE ${sourceWhere} AND ${personWhere} AND m.role='user' AND date(m.occurred_at,'unixepoch') BETWEEN ${from} AND ${to}) userMessages,
         (SELECT COUNT(*) FROM messages m JOIN sources s ON s.id=m.source_id LEFT JOIN conversations v ON v.id=m.conversation_id LEFT JOIN contacts c ON c.id=COALESCE(m.contact_id,v.contact_id) WHERE ${sourceWhere} AND ${personWhere} AND m.role='assistant' AND date(m.occurred_at,'unixepoch') BETWEEN ${from} AND ${to}) ai,
-        (SELECT COUNT(*) FROM test_attempts a JOIN sources s ON s.id=a.source_id LEFT JOIN contacts c ON c.id=a.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to}) tests,
-        (SELECT COUNT(*) FROM match_profiles p JOIN sources s ON s.id=p.source_id LEFT JOIN contacts c ON c.id=p.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to}) matches`),
+        (SELECT COUNT(*) FROM ${countableTestAttempts()} a JOIN sources s ON s.id=a.source_id LEFT JOIN contacts c ON c.id=a.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to}) tests,
+        (SELECT COUNT(*) FROM ${countableMatchProfiles()} p JOIN sources s ON s.id=p.source_id LEFT JOIN contacts c ON c.id=p.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to}) matches,
+        (SELECT COUNT(*) FROM ${countableMatchProfiles()} p JOIN sources s ON s.id=p.source_id LEFT JOIN contacts c ON c.id=p.contact_id WHERE p.completed_at IS NOT NULL AND ${sourceWhere} AND ${personWhere} AND date(p.completed_at,'unixepoch') BETWEEN ${from} AND ${to}) completedMatches`),
       db.all<ReportData['daily'][number]>(sql`WITH RECURSIVE days(day) AS (SELECT date(${from}) UNION ALL SELECT date(day,'+1 day') FROM days WHERE day<date(${to})),
         u AS (SELECT date(c.first_seen_at,'unixepoch') day,COUNT(*) count FROM contacts c JOIN sources s ON s.id=c.source_id WHERE ${sourceWhere} AND ${personWhere} AND date(c.first_seen_at,'unixepoch') BETWEEN ${from} AND ${to} GROUP BY day),
         m AS (SELECT date(m.occurred_at,'unixepoch') day,SUM(CASE WHEN m.role='user' THEN 1 ELSE 0 END) userMessages,SUM(CASE WHEN m.role='assistant' THEN 1 ELSE 0 END) ai FROM messages m JOIN sources s ON s.id=m.source_id LEFT JOIN conversations v ON v.id=m.conversation_id LEFT JOIN contacts c ON c.id=COALESCE(m.contact_id,v.contact_id) WHERE ${sourceWhere} AND ${personWhere} AND date(m.occurred_at,'unixepoch') BETWEEN ${from} AND ${to} GROUP BY day),
-        t AS (SELECT date(a.completed_at,'unixepoch') day,COUNT(*) count FROM test_attempts a JOIN sources s ON s.id=a.source_id LEFT JOIN contacts c ON c.id=a.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to} GROUP BY day),
-        p AS (SELECT date(COALESCE(p.completed_at,p.created_at),'unixepoch') day,COUNT(*) count FROM match_profiles p JOIN sources s ON s.id=p.source_id LEFT JOIN contacts c ON c.id=p.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to} GROUP BY day)
+        t AS (SELECT date(a.completed_at,'unixepoch') day,COUNT(*) count FROM ${countableTestAttempts()} a JOIN sources s ON s.id=a.source_id LEFT JOIN contacts c ON c.id=a.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to} GROUP BY day),
+        p AS (SELECT date(COALESCE(p.completed_at,p.created_at),'unixepoch') day,COUNT(*) count FROM ${countableMatchProfiles()} p JOIN sources s ON s.id=p.source_id LEFT JOIN contacts c ON c.id=p.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to} GROUP BY day)
         SELECT days.day,COALESCE(u.count,0) users,COALESCE(m.userMessages,0) userMessages,COALESCE(m.ai,0) ai,COALESCE(t.count,0) tests,COALESCE(p.count,0) matches FROM days LEFT JOIN u ON u.day=days.day LEFT JOIN m ON m.day=days.day LEFT JOIN t ON t.day=days.day LEFT JOIN p ON p.day=days.day ORDER BY days.day`),
-      db.all<{ slug: string; name: string }>(sql`SELECT slug,name FROM sources ORDER BY name`),
-      db.all<Omit<ReportData['breakdown'][number], 'total'>>(sql`SELECT s.name,s.kind,s.platform,
+      db.all<{ slug: string; name: string }>(sql`SELECT ${testGroupKey()} slug,${testGroupName()} name FROM sources s GROUP BY 1,2 ORDER BY name`),
+      db.all<Omit<ReportData['breakdown'][number], 'total'> & { slug: string }>(sql`SELECT ${testGroupKey()} slug,${testGroupName()} name,s.kind,CASE WHEN ${redlineSource()} THEN 'all' ELSE s.platform END platform,
         (SELECT COUNT(*) FROM contacts c WHERE c.source_id=s.id AND ${personWhere} AND date(c.first_seen_at,'unixepoch') BETWEEN ${from} AND ${to}) users,
-        (SELECT COUNT(*) FROM conversations v LEFT JOIN contacts c ON c.id=v.contact_id WHERE v.source_id=s.id AND ${personWhere} AND date(v.started_at,'unixepoch') BETWEEN ${from} AND ${to}) conversations,
+        (SELECT COUNT(*) FROM ${activeConversations()} v LEFT JOIN contacts c ON c.id=v.contact_id WHERE v.source_id=s.id AND ${personWhere} AND date(v.started_at,'unixepoch') BETWEEN ${from} AND ${to}) conversations,
         (SELECT COUNT(*) FROM messages m LEFT JOIN conversations v ON v.id=m.conversation_id LEFT JOIN contacts c ON c.id=COALESCE(m.contact_id,v.contact_id) WHERE m.source_id=s.id AND ${personWhere} AND m.role='user' AND date(m.occurred_at,'unixepoch') BETWEEN ${from} AND ${to}) userMessages,
         (SELECT COUNT(*) FROM messages m LEFT JOIN conversations v ON v.id=m.conversation_id LEFT JOIN contacts c ON c.id=COALESCE(m.contact_id,v.contact_id) WHERE m.source_id=s.id AND ${personWhere} AND m.role='assistant' AND date(m.occurred_at,'unixepoch') BETWEEN ${from} AND ${to}) ai,
-        (SELECT COUNT(*) FROM test_attempts a LEFT JOIN contacts c ON c.id=a.contact_id WHERE a.source_id=s.id AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to}) tests,
-        (SELECT COUNT(*) FROM match_profiles p LEFT JOIN contacts c ON c.id=p.contact_id WHERE p.source_id=s.id AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to}) matches
+        (SELECT COUNT(*) FROM ${countableTestAttempts()} a LEFT JOIN contacts c ON c.id=a.contact_id WHERE a.source_id=s.id AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to}) tests,
+        (SELECT COUNT(*) FROM ${countableMatchProfiles()} p LEFT JOIN contacts c ON c.id=p.contact_id WHERE p.source_id=s.id AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to}) matches
         FROM sources s WHERE ${sourceWhere} ORDER BY s.name`),
     ]);
     const num = (value: unknown) => Number(value ?? 0);
-    const normalizedBreakdown = breakdown.map((item) => {
+    const groupedBreakdown = new Map<string, ReportData['breakdown'][number]>();
+    for (const item of breakdown) {
       const row = { ...item, users: num(item.users), conversations: num(item.conversations), userMessages: num(item.userMessages), ai: num(item.ai), tests: num(item.tests), matches: num(item.matches) };
-      return { ...row, total: row.userMessages + row.ai + row.tests + row.matches };
-    }).sort((a, b) => b.total - a.total || b.users - a.users);
+      const saved = groupedBreakdown.get(item.slug);
+      if (saved) {
+        for (const key of ['users', 'conversations', 'userMessages', 'ai', 'tests', 'matches'] as const) saved[key] += row[key];
+        saved.total = saved.userMessages + saved.ai + saved.tests + saved.matches;
+      } else groupedBreakdown.set(item.slug, { ...row, total: row.userMessages + row.ai + row.tests + row.matches });
+    }
+    const normalizedBreakdown = [...groupedBreakdown.values()].sort((a, b) => b.total - a.total || b.users - a.users);
     return {
-      totals: { users: num(totals?.users), conversations: num(totals?.conversations), userMessages: num(totals?.userMessages), ai: num(totals?.ai), tests: num(totals?.tests), matches: num(totals?.matches) },
+      totals: { users: num(totals?.users), conversations: num(totals?.conversations), userMessages: num(totals?.userMessages), ai: num(totals?.ai), tests: num(totals?.tests), matches: num(totals?.matches), completedMatches: num(totals?.completedMatches), incompleteMatches: num(totals?.matches) - num(totals?.completedMatches) },
       daily: daily.map((item) => ({ day: item.day, users: num(item.users), userMessages: num(item.userMessages), ai: num(item.ai), tests: num(item.tests), matches: num(item.matches) })),
       sources, provinces: empty.provinces, breakdown: normalizedBreakdown, range: normalized.range, applied, notice: empty.notice,
     };
@@ -64,13 +74,13 @@ export async function getExportRows(type: string, filters: ReportFilters): Promi
   const db = getDb(); const applied = normalizeDimensions(filters); const sourceWhere = sourceFilter(applied); const personWhere = demographicFilter(applied); const { from, to } = normalizeRange(filters).range;
   if (type === 'users') { const rows = await db.all<Record<string, unknown>>(sql`SELECT c.id,s.name source,s.kind source_kind,s.platform,c.name,c.phone,c.external_user_id,c.anonymous_id,c.ip_hash,c.province,c.city,c.gender,c.age,c.education,c.metadata,datetime(c.first_seen_at,'unixepoch','localtime') first_seen,datetime(c.last_seen_at,'unixepoch','localtime') last_seen FROM contacts c JOIN sources s ON s.id=c.source_id WHERE ${sourceWhere} AND ${personWhere} AND date(c.first_seen_at,'unixepoch') BETWEEN ${from} AND ${to} ORDER BY c.first_seen_at DESC LIMIT 50000`); return objectRows(rows); }
   if (type === 'messages') { const rows = await db.all<Record<string, unknown>>(sql`SELECT m.id,s.name source,v.external_session_id session_id,m.contact_id,m.external_message_id,m.role,m.content,m.model,m.input_tokens,m.output_tokens,m.latency_ms,datetime(m.occurred_at,'unixepoch','localtime') occurred_at FROM messages m JOIN sources s ON s.id=m.source_id LEFT JOIN conversations v ON v.id=m.conversation_id LEFT JOIN contacts c ON c.id=COALESCE(m.contact_id,v.contact_id) WHERE ${sourceWhere} AND ${personWhere} AND date(m.occurred_at,'unixepoch') BETWEEN ${from} AND ${to} ORDER BY m.occurred_at DESC LIMIT 50000`); return objectRows(rows); }
-  if (type === 'tests') { const rows = await db.all<Record<string, unknown>>(sql`SELECT a.id,s.name test,c.name,c.phone,c.province,c.city,c.gender,c.age,c.education,a.tracking_code,a.profile,a.scores,a.result,a.ai_analysis,(SELECT json_group_array(json_object('position',x.position,'question',x.question_text,'answer',COALESCE(x.answer_label,x.answer_value),'score',x.score)) FROM test_answers x WHERE x.attempt_id=a.id ORDER BY x.position) answers,datetime(a.started_at,'unixepoch','localtime') started_at,datetime(a.completed_at,'unixepoch','localtime') completed_at FROM test_attempts a JOIN sources s ON s.id=a.source_id LEFT JOIN contacts c ON c.id=a.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to} ORDER BY a.completed_at DESC LIMIT 50000`); return objectRows(rows); }
-  if (type === 'matchmaking') { const rows = await db.all<Record<string, unknown>>(sql`SELECT p.id,s.name source,p.external_profile_id,p.attempt_number,COALESCE(c.name,c.external_user_id,'بدون نام') person,c.external_user_id,c.phone,c.province,c.city,c.gender,c.age,c.education,p.profile,p.archetype,p.traits,CASE WHEN p.consent=1 THEN 'بله' ELSE 'خیر' END consent,(SELECT json_group_array(json_object('position',x.position,'question',x.question_text,'answer',COALESCE(x.answer_label,x.answer_value))) FROM match_answers x WHERE x.profile_id=p.id ORDER BY x.position) answers,datetime(p.completed_at,'unixepoch','localtime') completed_at,datetime(p.created_at,'unixepoch','localtime') created_at FROM match_profiles p JOIN sources s ON s.id=p.source_id LEFT JOIN contacts c ON c.id=p.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to} ORDER BY COALESCE(p.completed_at,p.created_at) DESC LIMIT 50000`); return objectRows(rows); }
+  if (type === 'tests') { const rows = await db.all<Record<string, unknown>>(sql`SELECT a.id,s.name test,c.name,c.phone,c.province,c.city,c.gender,c.age,c.education,a.tracking_code,a.profile,a.scores,a.result,a.ai_analysis,(SELECT json_group_array(json_object('position',x.position,'question',x.question_text,'answer',COALESCE(x.answer_label,x.answer_value),'score',x.score)) FROM test_answers x WHERE x.attempt_id=a.id ORDER BY x.position) answers,datetime(a.started_at,'unixepoch','localtime') started_at,datetime(a.completed_at,'unixepoch','localtime') completed_at FROM ${countableTestAttempts()} a JOIN sources s ON s.id=a.source_id LEFT JOIN contacts c ON c.id=a.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(a.completed_at,'unixepoch') BETWEEN ${from} AND ${to} ORDER BY a.completed_at DESC LIMIT 50000`); return objectRows(rows); }
+  if (type === 'matchmaking') { const rows = await db.all<Record<string, unknown>>(sql`SELECT p.id,s.name source,p.external_profile_id,p.attempt_number,COALESCE(c.name,c.external_user_id,'بدون نام') person,c.external_user_id,c.phone,c.province,c.city,c.gender,c.age,c.education,p.profile,p.archetype,p.traits,CASE WHEN p.consent=1 THEN 'بله' ELSE 'خیر' END consent,(SELECT json_group_array(json_object('position',x.position,'question',x.question_text,'answer',COALESCE(x.answer_label,x.answer_value))) FROM match_answers x WHERE x.profile_id=p.id ORDER BY x.position) answers,datetime(p.completed_at,'unixepoch','localtime') completed_at,datetime(p.created_at,'unixepoch','localtime') created_at FROM ${countableMatchProfiles()} p JOIN sources s ON s.id=p.source_id LEFT JOIN contacts c ON c.id=p.contact_id WHERE ${sourceWhere} AND ${personWhere} AND date(COALESCE(p.completed_at,p.created_at),'unixepoch') BETWEEN ${from} AND ${to} ORDER BY COALESCE(p.completed_at,p.created_at) DESC LIMIT 50000`); return objectRows(rows); }
   throw new Error('نوع گزارش نامعتبر است');
 }
 
 function sourceFilter(filters: AppliedFilters): SQL {
-  const source = filters.source ? sql`s.slug = ${filters.source}` : sql`1 = 1`;
+  const source = testSourceFilter(filters.source);
   const section = filters.section ? sql`s.kind = ${filters.section}` : sql`1 = 1`;
   return sql`${source} AND ${section}`;
 }
@@ -100,7 +110,7 @@ function normalizeDimensions(filters: ReportFilters): AppliedFilters {
   const ageFrom = ageValue(filters.ageFrom);
   const ageTo = ageValue(filters.ageTo);
   const reversed = ageFrom !== null && ageTo !== null && ageFrom > ageTo;
-  return { source: (filters.source ?? '').trim().slice(0, 100), section, province, gender, ageFrom: reversed ? null : ageFrom, ageTo: reversed ? null : ageTo };
+  return { source: normalizeTestFilter((filters.source ?? '').trim().slice(0, 100)), section, province, gender, ageFrom: reversed ? null : ageFrom, ageTo: reversed ? null : ageTo };
 }
 function ageValue(value: string | undefined): number | null {
   if (!value || !/^\d{1,3}$/.test(value)) return null;

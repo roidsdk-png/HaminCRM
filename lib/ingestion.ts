@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { contacts, conversations, ingestionEvents, matchAnswers, matchProfiles, messages, sources, testAnswers, testAttempts } from '@/db/schema';
 import locations from '@/lib/data/iran-locations.json';
+import { countableMatchProfiles } from '@/lib/match-data';
 
 type InputEvent = { eventId: string; type: string; occurredAt: string; payload: Record<string, unknown> };
 type AnyRecord = Record<string, unknown>;
@@ -100,7 +101,15 @@ async function ingestMessage(sourceId: string, event: InputEvent, eventRowId: st
   if (!conversation) { const id = crypto.randomUUID(); await db.insert(conversations).values({ id, sourceId, contactId, externalSessionId: sessionId, startedAt: asDate(event.occurredAt), lastMessageAt: asDate(event.occurredAt), messageCount: 0 }).onConflictDoNothing(); [conversation] = await db.select().from(conversations).where(conversationIdentity).limit(1); }
   if (!conversation) throw new Error('Conversation could not be resolved');
   const inserted = await db.insert(messages).values({ id: eventRowId, sourceId, conversationId: conversation.id, contactId, externalMessageId: optionalString(p.messageId), role: role(p.role), content: requiredString(p.content, 'payload.content'), model: optionalString(p.model), inputTokens: optionalNumber(p.inputTokens), outputTokens: optionalNumber(p.outputTokens), latencyMs: optionalNumber(p.latencyMs), occurredAt: asDate(event.occurredAt) }).onConflictDoNothing().returning({ id: messages.id });
-  if (inserted.length) await db.update(conversations).set({ lastMessageAt: asDate(event.occurredAt), messageCount: sql`${conversations.messageCount} + 1`, updatedAt: new Date() }).where(eq(conversations.id, conversation.id));
+  if (inserted.length) {
+    const occurredAt = Math.floor(asDate(event.occurredAt).getTime() / 1000);
+    await db.update(conversations).set({
+      startedAt: sql`MIN(${conversations.startedAt}, ${occurredAt})`,
+      lastMessageAt: sql`MAX(${conversations.lastMessageAt}, ${occurredAt})`,
+      messageCount: sql`${conversations.messageCount} + 1`,
+      updatedAt: new Date(),
+    }).where(eq(conversations.id, conversation.id));
+  }
 }
 
 async function ingestTest(sourceId: string, event: InputEvent) {
@@ -120,6 +129,19 @@ async function ingestTestAnalysis(sourceId: string, event: InputEvent) {
 
 async function ingestMatchProfile(sourceId: string, event: InputEvent) {
   const db = getDb(); const p = event.payload; const profile = enrichLocation(asRecord(p.profile)); const contactId = await resolveContact(sourceId, profile); const id = crypto.randomUUID();
+  const code = optionalString(profile.participantCode);
+  if (code) {
+    const [incomplete] = await db.select().from(matchProfiles).where(and(
+      eq(matchProfiles.sourceId, sourceId), eq(matchProfiles.contactId, contactId),
+      sql`${matchProfiles.completedAt} IS NULL`, sql`json_extract(${matchProfiles.profile}, '$.participantCode') = ${code}`,
+      sql`${matchProfiles.id} IN (SELECT id FROM ${countableMatchProfiles()})`,
+    )).limit(1);
+    if (incomplete) await db.update(matchProfiles).set({
+      externalProfileId: requiredString(p.profileId, 'payload.profileId'), attemptNumber: optionalNumber(p.attemptNumber) ?? 1,
+      profile: { ...incomplete.profile, ...profile }, traits: numberRecord(p.traits), archetype: optionalString(p.archetype),
+      consent: p.consent === true, completedAt: asDate(event.occurredAt),
+    }).where(and(eq(matchProfiles.id, incomplete.id), sql`${matchProfiles.completedAt} IS NULL`));
+  }
   await db.insert(matchProfiles).values({ id, sourceId, contactId, externalProfileId: requiredString(p.profileId, 'payload.profileId'), attemptNumber: optionalNumber(p.attemptNumber) ?? 1, profile, traits: numberRecord(p.traits), archetype: optionalString(p.archetype), consent: p.consent === true, completedAt: asDate(event.occurredAt) }).onConflictDoNothing();
   const [saved] = await db.select({ id: matchProfiles.id }).from(matchProfiles).where(and(eq(matchProfiles.sourceId, sourceId), eq(matchProfiles.externalProfileId, requiredString(p.profileId, 'payload.profileId')), eq(matchProfiles.attemptNumber, optionalNumber(p.attemptNumber) ?? 1))).limit(1);
   if (!saved) throw new Error('Match profile could not be resolved');
@@ -134,7 +156,7 @@ async function ingestImportedMatchProfile(sourceId: string, event: InputEvent) {
   const profileId = requiredString(p.profileId, 'payload.profileId');
   const participantCode = optionalString(profile.participantCode);
   const contactId = await resolveContact(sourceId, profile);
-  const candidates = await db.select().from(matchProfiles).where(and(eq(matchProfiles.sourceId, sourceId), eq(matchProfiles.contactId, contactId))).orderBy(desc(matchProfiles.completedAt), desc(matchProfiles.createdAt));
+  const candidates = await db.select().from(matchProfiles).where(and(eq(matchProfiles.sourceId, sourceId), eq(matchProfiles.contactId, contactId), sql`${matchProfiles.id} IN (SELECT id FROM ${countableMatchProfiles()})`)).orderBy(desc(matchProfiles.completedAt), desc(matchProfiles.createdAt));
   const existing = candidates.find((item) => {
     if (item.externalProfileId === profileId) return true;
     const savedCode = optionalString(asRecord(item.profile).participantCode);
@@ -196,14 +218,23 @@ async function ingestImportedMatchProfile(sourceId: string, event: InputEvent) {
 
 async function updateMatchProfile(sourceId: string, event: InputEvent) {
   const db = getDb(); const p = event.payload; const profile = enrichLocation(asRecord(p.profile)); const contactId = await resolveContact(sourceId, profile);
-  const [latest] = await db.select().from(matchProfiles).where(and(eq(matchProfiles.sourceId, sourceId), eq(matchProfiles.contactId, contactId))).orderBy(desc(matchProfiles.completedAt), desc(matchProfiles.createdAt)).limit(1);
+  const code = optionalString(profile.participantCode);
+  const occurredAt = asDate(event.occurredAt);
+  const [latest] = await db.select().from(matchProfiles).where(and(
+    eq(matchProfiles.sourceId, sourceId), eq(matchProfiles.contactId, contactId),
+    code ? sql`json_extract(${matchProfiles.profile}, '$.participantCode') = ${code}` : sql`1 = 1`,
+    sql`COALESCE(${matchProfiles.completedAt}, ${matchProfiles.createdAt}) <= ${Math.floor(occurredAt.getTime() / 1000)}`,
+    sql`${matchProfiles.id} IN (SELECT id FROM ${countableMatchProfiles()})`,
+  )).orderBy(desc(matchProfiles.completedAt), desc(matchProfiles.createdAt)).limit(1);
   // Some users created their profile before CRM integration. Their first event
   // can therefore be a consent/profile update with no imported profile row.
   // The raw event and contact data are already stored; accept it instead of
   // marking a valid legacy-user event as failed. A later completed event will
   // create the full profile normally.
   if (!latest) return;
-  await db.update(matchProfiles).set({ profile: { ...latest.profile, ...profile }, consent: p.consent === true }).where(eq(matchProfiles.id, latest.id));
+  const lastConsentAt = optionalDate(asRecord(latest.profile).consentUpdatedAt);
+  if (lastConsentAt && lastConsentAt.getTime() > occurredAt.getTime()) return;
+  await db.update(matchProfiles).set({ profile: { ...latest.profile, ...profile, consentUpdatedAt: occurredAt.toISOString() }, consent: p.consent === true }).where(eq(matchProfiles.id, latest.id));
 }
 
 const uniqueCityProvince = (() => {
@@ -237,9 +268,11 @@ async function resolveContact(sourceId: string, p: AnyRecord) {
   // Web chatbots can reuse a cookie/session across different visitors. When an
   // IP hash is supplied it is therefore the primary anonymous identity.
   if (ipHash) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.ipHash, ipHash))).limit(1);
-  if (!found && external) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.externalUserId, external))).limit(1);
-  if (!found && anonymous) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.anonymousId, anonymous))).limit(1);
-  if (!found && phone) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.phone, phone))).limit(1);
+  // If an IP identity is supplied, a shared browser/session ID must not attach
+  // this message to a different IP's existing contact.
+  if (!found && !ipHash && external) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.externalUserId, external))).limit(1);
+  if (!found && !ipHash && anonymous) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.anonymousId, anonymous))).limit(1);
+  if (!found && !ipHash && phone) [found] = await db.select().from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.phone, phone))).limit(1);
   if (found) { await db.update(contacts).set({ externalUserId: found.externalUserId ?? external, anonymousId: found.anonymousId ?? anonymous, ipHash: found.ipHash ?? ipHash, lastSeenAt: new Date(), name: optionalString(p.name) ?? found.name, phone: phone ?? found.phone, province: optionalString(p.province) ?? found.province, city: optionalString(p.city) ?? found.city, gender: optionalString(p.gender) ?? found.gender, age: optionalNumber(p.age) ?? found.age, education: optionalString(p.education) ?? found.education, updatedAt: new Date() }).where(eq(contacts.id, found.id)); return found.id; }
   const id = crypto.randomUUID(); await db.insert(contacts).values({ id, sourceId, externalUserId: external, anonymousId: anonymous, ipHash, name: optionalString(p.name), phone, province: optionalString(p.province), city: optionalString(p.city), gender: optionalString(p.gender), age: optionalNumber(p.age), education: optionalString(p.education), metadata: asRecord(p.metadata) }).onConflictDoNothing();
   if (ipHash) { const [saved] = await db.select({ id: contacts.id }).from(contacts).where(and(eq(contacts.sourceId, sourceId), eq(contacts.ipHash, ipHash))).limit(1); if (saved) return saved.id; }

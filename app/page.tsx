@@ -7,6 +7,7 @@ import {
   Users,
   Activity,
   BarChart3,
+  Sparkles,
 } from 'lucide-react';
 import { getDashboardData } from '@/lib/dashboard-data';
 import { getChatGPTUser, chatGPTSignInPath } from '@/app/chatgpt-auth';
@@ -14,7 +15,6 @@ import { CrmShell } from '@/components/crm-shell';
 import { ActivityMixChart, SourceChart } from '@/components/dashboard-charts';
 import { can, getAdminRole } from '@/lib/admin-access';
 import { PageAccessDenied } from '@/components/page-access-denied';
-import { BrandLogo } from '@/components/brand-logo';
 
 const fa = new Intl.NumberFormat('fa-IR');
 
@@ -323,7 +323,7 @@ function SignIn() {
     <main className="grid min-h-screen place-items-center bg-background p-6 text-foreground" dir="rtl">
       <section className="w-full max-w-md rounded-3xl bg-card p-8 text-center shadow-xl border border-border">
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-          <BrandLogo className="h-8 w-8 text-primary-foreground" />
+          <Sparkles size={28} />
         </div>
         <h1 className="mt-6 text-2xl font-black text-foreground">سامانه مدیریت کلینیک</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">

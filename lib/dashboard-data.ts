@@ -1,5 +1,7 @@
+import { countableMatchProfiles } from '@/lib/match-data';
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/db';
+import { countableTestAttempts, testGroupKey, testGroupName } from '@/lib/test-catalog';
 
 export type RecentMessage = {
   id: string;
@@ -59,7 +61,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       db.get<{ contacts: number; messages: number; aiMessages: number; tests: number; matchProfiles: number; activeSources: number }>(sql`
         SELECT (SELECT COUNT(*) FROM contacts) contacts, (SELECT COUNT(*) FROM messages) messages,
           (SELECT COUNT(*) FROM messages WHERE role = 'assistant') aiMessages,
-          (SELECT COUNT(*) FROM test_attempts) tests, (SELECT COUNT(*) FROM match_profiles) matchProfiles,
+          (SELECT COUNT(*) FROM ${countableTestAttempts()}) tests, (SELECT COUNT(*) FROM ${countableMatchProfiles()}) matchProfiles,
           (SELECT COUNT(*) FROM sources WHERE status = 'active') activeSources`),
       db.all<{ slug: string }>(sql`SELECT slug FROM sources WHERE status = 'active'`),
       db.all<{ day: string; userMessages: number; aiMessages: number; tests: number; matches: number; count: number }>(sql`
@@ -68,17 +70,18 @@ export async function getDashboardData(): Promise<DashboardData> {
           SUM(CASE WHEN role='user' THEN 1 ELSE 0 END) user_messages,
           SUM(CASE WHEN role='assistant' THEN 1 ELSE 0 END) ai_messages
           FROM messages WHERE occurred_at>=unixepoch('now','-6 day') GROUP BY day),
-        tests AS (SELECT date(completed_at,'unixepoch') day,COUNT(*) count FROM test_attempts WHERE completed_at>=unixepoch('now','-6 day') GROUP BY day),
-        matches AS (SELECT date(COALESCE(completed_at,created_at),'unixepoch') day,COUNT(*) count FROM match_profiles WHERE COALESCE(completed_at,created_at)>=unixepoch('now','-6 day') GROUP BY day)
+        tests AS (SELECT date(completed_at,'unixepoch') day,COUNT(*) count FROM ${countableTestAttempts()} WHERE completed_at>=unixepoch('now','-6 day') GROUP BY day),
+        matches AS (SELECT date(COALESCE(completed_at,created_at),'unixepoch') day,COUNT(*) count FROM ${countableMatchProfiles()} WHERE COALESCE(completed_at,created_at)>=unixepoch('now','-6 day') GROUP BY day)
         SELECT days.day,COALESCE(activity.user_messages,0) userMessages,COALESCE(activity.ai_messages,0) aiMessages,COALESCE(tests.count,0) tests,COALESCE(matches.count,0) matches,
           COALESCE(activity.user_messages,0)+COALESCE(activity.ai_messages,0)+COALESCE(tests.count,0)+COALESCE(matches.count,0) count
         FROM days LEFT JOIN activity ON activity.day=days.day LEFT JOIN tests ON tests.day=days.day LEFT JOIN matches ON matches.day=days.day ORDER BY days.day`),
       db.all<{ slug: string; name: string; status: string; messages: number; tests: number; profiles: number }>(sql`
-        SELECT s.slug, s.name, s.status,
-          (SELECT COUNT(*) FROM messages m WHERE m.source_id=s.id) messages,
-          (SELECT COUNT(*) FROM test_attempts a WHERE a.source_id=s.id) tests,
-          (SELECT COUNT(*) FROM match_profiles p WHERE p.source_id=s.id) profiles
-        FROM sources s ORDER BY s.name`),
+        SELECT ${testGroupKey()} slug, ${testGroupName()} name,
+          CASE WHEN SUM(CASE WHEN s.status='active' THEN 1 ELSE 0 END)>0 THEN 'active' ELSE MIN(s.status) END status,
+          SUM((SELECT COUNT(*) FROM messages m WHERE m.source_id=s.id)) messages,
+          SUM((SELECT COUNT(*) FROM ${countableTestAttempts()} a WHERE a.source_id=s.id)) tests,
+          SUM((SELECT COUNT(*) FROM ${countableMatchProfiles()} p WHERE p.source_id=s.id)) profiles
+        FROM sources s GROUP BY 1,2 ORDER BY name`),
       db.all<{ id: string; content: string; role: string; occurredAt: number; conversationId: string; contactName: string; sourceName: string; platform: string }>(sql`
         SELECT m.id, m.content, m.role, m.occurred_at as occurredAt, m.conversation_id as conversationId,
           COALESCE(c.name, c.phone, 'کاربر مهمان') as contactName,
@@ -94,7 +97,7 @@ export async function getDashboardData(): Promise<DashboardData> {
           COALESCE(c.name, c.phone, 'کاربر ناشناس') as contactName,
           COALESCE(s.name, 'وب‌اپلیکیشن') as sourceName,
           t.ai_analysis as aiAnalysis
-        FROM test_attempts t
+        FROM ${countableTestAttempts()} t
         LEFT JOIN contacts c ON t.contact_id = c.id
         LEFT JOIN sources s ON t.source_id = s.id
         ORDER BY t.completed_at DESC
@@ -104,7 +107,7 @@ export async function getDashboardData(): Promise<DashboardData> {
           COALESCE(c.name, 'متقاضی ازدواج') as contactName,
           c.city, c.age,
           COALESCE(s.name, 'ربات همسان‌گزینی') as sourceName
-        FROM match_profiles p
+        FROM ${countableMatchProfiles()} p
         LEFT JOIN contacts c ON p.contact_id = c.id
         LEFT JOIN sources s ON p.source_id = s.id
         ORDER BY p.completed_at DESC

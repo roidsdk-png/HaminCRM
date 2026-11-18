@@ -13,13 +13,14 @@ import {
   SlidersHorizontal,
   User,
   Users,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getChatGPTUser, chatGPTSignInPath } from '@/app/chatgpt-auth';
 import { getSectionData } from '@/lib/section-data';
+import { normalizeTestFilter } from '@/lib/test-catalog';
 import { Button } from '@/components/ui/button';
-import { BrandLogo } from '@/components/brand-logo';
 import {
   Table,
   TableBody,
@@ -66,7 +67,7 @@ const sections = {
     description: 'تلاش‌های ثبت‌شده، پاسخ‌ها، نمرات ابعاد و تحلیل بالینی هوش مصنوعی',
     icon: ClipboardCheck,
     searchPlaceholder: 'جستجو با نام، شماره یا کد پیگیری آزمون...',
-    columns: ['عنوان آزمون', 'شرکت‌کننده', 'کد پیگیری', 'زمان تکمیل'],
+    columns: ['عنوان آزمون', 'بستر', 'شرکت‌کننده', 'کد پیگیری', 'زمان تکمیل'],
   },
   matchmaking: {
     title: 'فرم کی مناسب ازدواجه',
@@ -108,7 +109,8 @@ export default async function SectionPage({
   }
   if (!can(await getAdminRole(user), 'read')) return <PageAccessDenied />;
 
-  const filters = await searchParams;
+  const rawFilters = await searchParams;
+  const filters = section === 'tests' ? { ...rawFilters, source: normalizeTestFilter(rawFilters.source) } : rawFilters;
   const requestedPage = Math.max(1, Number.parseInt(filters.page ?? '1', 10) || 1);
   const dateRange = resolveDateRange(filters.from, filters.to, filters.range);
   const data = await getSectionData(section, filters.q, filters.source, requestedPage, 20, filters.province, filters.sort, filters.kind, filters.city, dateRange.from, dateRange.to, filters.gender);
@@ -130,7 +132,7 @@ export default async function SectionPage({
               <div className="flex items-center gap-2.5">
                 <h1 className="text-lg font-black text-foreground">{item.title}</h1>
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold text-muted-foreground">
-                  {fa.format(data.total)} مورد
+                  {data.error ? 'آمار در دسترس نیست' : `${fa.format(data.total)} مورد`}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
@@ -154,6 +156,36 @@ export default async function SectionPage({
             )}
           </div>
         </header>
+
+        {data.error && <p role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{data.error}</p>}
+
+        {section === 'tests' && Boolean(data.testStats?.length) && (
+          <section aria-label="آمار تجمیعی آزمون‌ها" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.testStats?.map((test) => (
+              <a key={test.slug} href={pageHref(section, { ...filters, source: test.slug }, 1)} className="rounded-2xl border border-border bg-card p-4 shadow-xs hover:border-primary/50">
+                <h2 className="text-sm font-bold text-foreground">{test.name}</h2>
+                <p className="mt-2 text-2xl font-black text-primary">{fa.format(test.attempts)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">آزمون تکمیل‌شده در مجموع بسترها</p>
+              </a>
+            ))}
+          </section>
+        )}
+
+        {section === 'matchmaking' && data.matchStats && (
+          <section aria-label="وضعیت فرم‌های ازدواج" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'همه سوابق فرم‌های دریافتی', value: data.matchStats.total },
+              { label: 'افراد یکتا در سوابق', value: data.matchStats.participants },
+              { label: 'فرم تکمیل‌شده', value: data.matchStats.completed },
+              { label: 'فرم ناتمام', value: data.matchStats.incomplete },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-border bg-card p-4 shadow-xs">
+                <h2 className="text-sm font-bold text-foreground">{stat.label}</h2>
+                <p className="mt-2 text-2xl font-black text-primary">{fa.format(stat.value)}</p>
+              </div>
+            ))}
+          </section>
+        )}
 
         {/* Filter and Search Bar */}
         <form
@@ -369,7 +401,7 @@ export default async function SectionPage({
                           <span dir="ltr" className="font-mono text-xs font-bold text-muted-foreground">
                             {cell}
                           </span>
-                        ) : i === 2 && section === 'tests' ? (
+                        ) : i === 3 && section === 'tests' ? (
                           <code dir="ltr" className="rounded bg-muted px-2 py-0.5 font-mono text-[11px] font-bold text-foreground">
                             {cell}
                           </code>
@@ -570,7 +602,7 @@ function SignIn({ returnTo }: { returnTo: string }) {
     <main className="grid min-h-screen place-items-center bg-background p-6">
       <div className="w-full max-w-sm rounded-3xl bg-card p-8 text-center shadow-xl border border-border">
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-          <BrandLogo className="h-8 w-8 text-primary-foreground" />
+          <Sparkles size={28} />
         </div>
         <h1 className="mt-6 text-2xl font-black text-foreground">ورود مدیر سامانه</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
