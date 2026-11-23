@@ -1,0 +1,66 @@
+services:
+  crm:
+    environment:
+      ANALYTICS_SERVICE_URL: http://analytics:8091
+      ANALYTICS_INTERNAL_TOKEN: ${ANALYTICS_INTERNAL_TOKEN:?Set ANALYTICS_INTERNAL_TOKEN in analytics.env}
+
+  analytics:
+    build:
+      context: .
+      dockerfile: analytics/Dockerfile
+    restart: unless-stopped
+    init: true
+    env_file:
+      - analytics.env
+    environment:
+      ANALYTICS_ENV: production
+      ANALYTICS_DATABASE_URL: postgresql://analytics:${ANALYTICS_POSTGRES_PASSWORD:?Set ANALYTICS_POSTGRES_PASSWORD in analytics.env}@analytics-db:5432/analytics
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+    expose:
+      - '8091'
+    volumes:
+      - analytics-config:/app/analytics-data
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  analytics-db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: analytics
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: ${ANALYTICS_POSTGRES_PASSWORD:?Set ANALYTICS_POSTGRES_PASSWORD in analytics.env}
+    volumes:
+      - analytics-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U analytics -d analytics']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  analytics-sync:
+    build:
+      context: .
+      dockerfile: analytics/Dockerfile
+    restart: unless-stopped
+    init: true
+    env_file:
+      - analytics.env
+    environment:
+      ANALYTICS_CRM_URL: http://crm:8787
+    command: ['python', '/app/scripts/analysis-sync.py']
+    depends_on:
+      crm:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+
+volumes:
+  analytics-postgres:
+  analytics-config:

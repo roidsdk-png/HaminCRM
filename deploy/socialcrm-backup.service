@@ -1,6 +1,6 @@
 [Unit]
 Description=Hamin SocialCRM database backup
-After=docker.service
+After=socialcrm-backup-api.service
 
 [Service]
 Type=oneshot

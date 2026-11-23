@@ -10,3 +10,7 @@ backups
 *.log
 .dev.vars
 .env*
+analytics.env
+analytics.env.local
+analytics-data
+.venv-analytics

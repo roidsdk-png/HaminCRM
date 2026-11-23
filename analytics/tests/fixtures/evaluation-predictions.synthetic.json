@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id": "synthetic-1", "labels": ["ترس از ازدواج", "تردید"], "evidence": [{"quote": "از شروع زندگی مشترک می‌ترسم", "contactId": "source-a:synthetic-user-1", "attribution": "self"}], "answer": "مخاطب ترس از آغاز زندگی مشترک را بیان کرده است."},
+    {"id": "synthetic-2", "labels": ["تنهایی"], "evidence": [{"quote": "آن زمان ۳۰ سال داشتم و احساس تنهایی می‌کردم", "contactId": "source-a:synthetic-user-2", "attribution": "other"}], "answer": "تجربهٔ دوست مخاطب در ۳۰ سالگی نقل شده است."}
+  ]
+}

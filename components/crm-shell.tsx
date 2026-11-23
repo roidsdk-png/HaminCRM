@@ -11,6 +11,7 @@ import {
   Menu,
   MessageSquareText,
   Search,
+  Sparkles,
   ShieldCheck,
   Users,
   Wifi,
@@ -71,6 +72,7 @@ const mainNav: NavItem[] = [
 ];
 
 const toolsNav: NavItem[] = [
+  { href: '/analysis', label: 'تحلیل و هوش مصنوعی', icon: Sparkles },
   { href: '/reports', label: 'گزارش‌گیری و آمار', icon: BarChart3 },
   { href: '/sources', label: 'منابع و ربات‌ها', icon: Wifi },
   { href: '/access', label: 'مدیران و دسترسی‌ها', icon: ShieldCheck },

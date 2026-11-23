@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "vinext dev",
+    "dev:analysis": "python scripts/analysis-local.py",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "test:smoke": "node scripts/smoke-test.mjs",

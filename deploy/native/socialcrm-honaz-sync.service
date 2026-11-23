@@ -1,0 +1,29 @@
+[Unit]
+Description=Hamin CRM read-only Honaz source synchronization
+After=network-online.target socialcrm.service
+Wants=network-online.target socialcrm.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root/socialCRM-current
+EnvironmentFile=/root/socialCRM/.dev.vars
+Environment=HONAZ_CRM_URL=http://127.0.0.1:3010/api/v1/events
+Environment=HONAZ_DB_PATH=/var/www/HonazTest/data/quiz.db
+Environment=HONAZ_QUESTIONS_PATH=/root/socialCRM-current/integrations/honaz/questions.json
+Environment=HONAZ_LEGACY_QUESTIONS_PATH=/root/socialCRM-current/integrations/honaz/legacy-questions.json
+Environment=HONAZ_SYNC_STATE_PATH=/root/socialCRM/data/honaz-sync-state.json
+Environment=HONAZ_SYNC_HEARTBEAT_PATH=/root/socialCRM/data/honaz-sync-heartbeat
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+ExecStart=/usr/bin/python3 -u /root/socialCRM-current/scripts/honaz-sync.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

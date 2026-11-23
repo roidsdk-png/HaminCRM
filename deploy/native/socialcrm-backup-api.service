@@ -1,0 +1,25 @@
+[Unit]
+Description=Hamin CRM loopback backup API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root/socialCRM-current
+EnvironmentFile=/root/socialCRM/.dev.vars
+Environment=CRM_DATA_ROOT=/root/socialCRM/data/v3/d1
+Environment=CRM_BACKUP_ROOT=/root/socialCRM/backups
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+ExecStart=/usr/bin/python3 /root/socialCRM-current/scripts/backup-service.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

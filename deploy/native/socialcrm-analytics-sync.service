@@ -1,0 +1,24 @@
+[Unit]
+Description=Hamin CRM incremental analytics synchronization
+After=network-online.target socialcrm.service socialcrm-analytics.service
+Wants=network-online.target socialcrm.service socialcrm-analytics.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root/socialCRM-current
+EnvironmentFile=/root/socialCRM/analytics.env
+Environment=ANALYTICS_CRM_URL=http://127.0.0.1:3010
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+ExecStart=/root/socialCRM/.venv-analytics/bin/python -u /root/socialCRM-current/scripts/analysis-sync.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
