@@ -40,8 +40,3 @@ __pycache__/
 /.wrangler/
 /outputs/
 /work/
-/data/
-/backups/
-crm-outbox/
-*.tar.gz
-*.zip

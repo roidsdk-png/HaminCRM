@@ -9,3 +9,4 @@ Unit=socialcrm-backup.service
 
 [Install]
 WantedBy=timers.target
+

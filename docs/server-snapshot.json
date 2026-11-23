@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-11-23T11:32:04Z",
+  "domain": "crm.haminyar.ir",
+  "sourceArchiveSha256": "e653098fd4f439f83a6b134dc16e76e221a981ca4e23d30883c5fc208f899df7",
+  "scope": "Production source before analytics/native deployment",
+  "privateBackupStoredSeparately": true,
+  "excluded": [
+    "live databases and WAL",
+    "private environment variables",
+    "private TLS keys",
+    "historical private backups",
+    "dependency and build caches",
+    "editor backup files"
+  ]
+}
