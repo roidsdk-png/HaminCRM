@@ -21,6 +21,10 @@ python3 -m venv .venv-analytics
 
 در `.dev.vars` دو مقدار `ANALYTICS_SERVICE_URL=http://127.0.0.1:8091` و `ANALYTICS_INTERNAL_TOKEN` تنظیم شوند. در `analytics.env` همان توکن داخلی، `ANALYTICS_ENV=production` و مسیرهای خصوصی تحلیل قرار گیرند. برای اجرای محلی SQLite تحلیلی، `ANALYTICS_DATABASE_URL=sqlite:////root/socialCRM/analytics-data/analytics.sqlite` کافی است. انتخاب PostgreSQL بومی به آماده‌سازی پایگاه، مجوزها و پشتیبان‌گیری جدا نیاز دارد. فایل‌ها و پوشه‌های خصوصی با دسترسی محدود نگهداری شوند.
 
+Wrangler فایل binding خصوصی را کنار فایل پیکربندی runtime می‌خواند. پس از build، `dist/server/.dev.vars` در انتشار به `/root/socialCRM/.dev.vars` پیوند داده شود. `--env-file` به‌تنهایی جای این binding را نمی‌گیرد. فایل خصوصی در Git یا assets مرورگر قرار نگیرد و پس از build مجدد، پیوند دوباره برقرار شود.
+
+پشت Nginx با TLS، گزینهٔ `--upstream-protocol https` در اجرای Wrangler لازم است. پراکسی داخلی Wrangler هدر Origin هم‌میزبان را به پروتکل upstream بازنویسی می‌کند؛ با این گزینه Origin معتبر HTTPS حفظ می‌شود و کنترل دقیق مبدأ در برنامه فعال می‌ماند.
+
 ```bash
 python3 scripts/analysis-native-preflight.py --root /root/socialCRM --data-root /root/socialCRM/data
 ```

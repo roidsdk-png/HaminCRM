@@ -15,7 +15,7 @@ Environment=WRANGLER_WRITE_LOGS=false
 Environment=CI=true
 EnvironmentFile=/root/socialCRM/.dev.vars
 UMask=0077
-ExecStart=/root/socialCRM-tools/node/bin/node /root/socialCRM-current/node_modules/wrangler/bin/wrangler.js dev --config /root/socialCRM-current/dist/server/wrangler.json --env-file /root/socialCRM/.dev.vars --local --persist-to /root/socialCRM/data --ip 127.0.0.1 --port 3010 --log-level info
+ExecStart=/root/socialCRM-tools/node/bin/node /root/socialCRM-current/node_modules/wrangler/bin/wrangler.js dev --config /root/socialCRM-current/dist/server/wrangler.json --env-file /root/socialCRM/.dev.vars --local --persist-to /root/socialCRM/data --ip 127.0.0.1 --port 3010 --upstream-protocol https --log-level info
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30

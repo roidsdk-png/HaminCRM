@@ -1,0 +1,1 @@
+CREATE INDEX `idx_ingestion_unprocessed_source_type` ON `ingestion_events` (`source_id`,`type`) WHERE "ingestion_events"."processing_status" <> 'processed';

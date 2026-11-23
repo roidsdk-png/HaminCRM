@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   index,
   integer,
@@ -265,6 +266,9 @@ export const ingestionEvents = sqliteTable(
       t.processingStatus,
       t.receivedAt,
     ),
+    index('idx_ingestion_unprocessed_source_type')
+      .on(t.sourceId, t.type)
+      .where(sql`${t.processingStatus} <> 'processed'`),
   ],
 );
 

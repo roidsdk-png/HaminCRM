@@ -138,6 +138,98 @@ class ChangeFeedAcceptance(unittest.TestCase):
             25,
         )
 
+    def insert_event(self, identifier, kind, payload, status):
+        self.db.execute(
+            "INSERT INTO ingestion_events(id,source_id,external_event_id,type,payload,occurred_at,received_at,processing_status) VALUES(?,?,?,?,?,1,1,?)",
+            (identifier, self.source, identifier, kind, payload, status),
+        )
+
+    def test_pending_ingestion_lookup_uses_partial_index(self):
+        query = """SELECT a.id FROM test_attempts a WHERE NOT EXISTS (
+            SELECT 1 FROM ingestion_events event
+            WHERE event.source_id=a.source_id AND event.type='test.completed'
+              AND json_extract(event.payload,'$.attemptId')=a.external_attempt_id
+              AND event.processing_status <> 'processed')"""
+        details = [row[3] for row in self.db.execute("EXPLAIN QUERY PLAN " + query)]
+        self.assertTrue(
+            any(
+                "USING INDEX idx_ingestion_unprocessed_source_type" in row
+                for row in details
+            ),
+            details,
+        )
+        self.assertFalse(any("SCAN event" in row for row in details), details)
+
+    def test_processed_history_is_not_parsed_and_pending_completion_still_blocks(self):
+        self.db.execute(
+            "INSERT INTO test_attempts(id,source_id,external_attempt_id,test_key,completed_at,created_at) VALUES('qa-pending-attempt',?,'external-target','qa-test',1,1)",
+            (self.source,),
+        )
+        query = """SELECT a.id FROM test_attempts a WHERE NOT EXISTS (
+            SELECT 1 FROM ingestion_events event
+            WHERE event.source_id=a.source_id AND event.type='test.completed'
+              AND json_extract(event.payload,'$.attemptId')=a.external_attempt_id
+              AND event.processing_status <> 'processed')"""
+        # Processed transport history can be large and is irrelevant to readiness.
+        # A malformed legacy value must never be parsed by this pending-only lookup.
+        self.insert_event(
+            "old-processed", "test.completed", "legacy non-JSON value", "processed"
+        )
+        self.insert_event(
+            "different-pending", "test.completed", '{"attemptId":"another"}', "received"
+        )
+        self.assertEqual(self.db.execute(query).fetchall(), [("qa-pending-attempt",)])
+        self.insert_event(
+            "target-pending",
+            "test.completed",
+            '{"attemptId":"external-target"}',
+            "received",
+        )
+        self.assertEqual(self.db.execute(query).fetchall(), [])
+        self.db.execute(
+            "UPDATE ingestion_events SET processing_status='failed' WHERE id='target-pending'"
+        )
+        self.assertEqual(self.db.execute(query).fetchall(), [])
+        self.db.execute(
+            "UPDATE ingestion_events SET processing_status='processed' WHERE id='target-pending'"
+        )
+        self.assertEqual(self.db.execute(query).fetchall(), [("qa-pending-attempt",)])
+
+    def test_pending_match_lookup_preserves_attempt_number(self):
+        self.db.execute(
+            "INSERT INTO match_profiles(id,source_id,external_profile_id,attempt_number,profile,completed_at,created_at) VALUES('qa-pending-match',?,'external-profile',2,'{}',1,1)",
+            (self.source,),
+        )
+        query = """SELECT p.id FROM match_profiles p WHERE NOT EXISTS (
+            SELECT 1 FROM ingestion_events event WHERE event.source_id=p.source_id
+              AND event.type='matchmaking.profile.completed'
+              AND json_extract(event.payload,'$.profileId')=p.external_profile_id
+              AND event.processing_status <> 'processed'
+              AND COALESCE(json_extract(event.payload,'$.attemptNumber'),1)=p.attempt_number)"""
+        details = [row[3] for row in self.db.execute("EXPLAIN QUERY PLAN " + query)]
+        self.assertTrue(
+            any("idx_ingestion_unprocessed_source_type" in row for row in details),
+            details,
+        )
+        self.insert_event(
+            "older-match",
+            "matchmaking.profile.completed",
+            '{"profileId":"external-profile","attemptNumber":1}',
+            "failed",
+        )
+        self.assertEqual(self.db.execute(query).fetchall(), [("qa-pending-match",)])
+        self.insert_event(
+            "current-match",
+            "matchmaking.profile.completed",
+            '{"profileId":"external-profile","attemptNumber":2}',
+            "received",
+        )
+        self.assertEqual(self.db.execute(query).fetchall(), [])
+        self.db.execute(
+            "UPDATE ingestion_events SET processing_status='processed' WHERE id='current-match'"
+        )
+        self.assertEqual(self.db.execute(query).fetchall(), [("qa-pending-match",)])
+
 
 if __name__ == "__main__":
     unittest.main()
