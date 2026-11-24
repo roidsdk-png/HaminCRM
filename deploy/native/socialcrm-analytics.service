@@ -12,7 +12,7 @@ Environment=ANALYTICS_ENV=production
 Environment=PYTHONUNBUFFERED=1
 EnvironmentFile=/root/socialCRM/analytics.env
 UMask=0077
-ExecStart=/root/socialCRM/.venv-analytics/bin/python -m uvicorn analytics.app:app --host 127.0.0.1 --port 8091 --workers 1
+ExecStart=/root/socialCRM/.venv-analytics/bin/python -m uvicorn analytics.app:app --host 127.0.0.1 --port 8091 --workers 1 --timeout-keep-alive 120
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=40

@@ -13,5 +13,5 @@ IOSchedulingClass=best-effort
 IOSchedulingPriority=7
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/root/socialCRM/backups /root/socialCRM/data
+ReadWritePaths=/root/socialCRM/backups /root/socialCRM/data -/root/socialCRM/analytics-data
 NoNewPrivileges=true
