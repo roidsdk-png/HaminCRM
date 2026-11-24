@@ -14,6 +14,14 @@ PROVIDER_PRESETS = {
         "label": "OpenRouter",
         "defaultBaseUrl": "https://openrouter.ai/api/v1",
     },
+    "avalai": {
+        "label": "AvalAI / اول ای‌آی",
+        "defaultBaseUrl": "https://api.avalai.ir/v1",
+    },
+    "gapgpt": {
+        "label": "GapGPT / گپ جی‌پی‌تی",
+        "defaultBaseUrl": "https://api.gapgpt.app/v1",
+    },
     "custom": {"label": "سرویس سازگار با OpenAI", "defaultBaseUrl": ""},
 }
 

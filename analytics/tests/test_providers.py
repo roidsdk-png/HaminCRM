@@ -60,6 +60,8 @@ class ProviderContracts(unittest.TestCase):
                 "max_tokens",
             ),
             ("openrouter", "https://openrouter.ai/api/v1", "max_tokens"),
+            ("avalai", "https://api.avalai.ir/v1", "max_tokens"),
+            ("gapgpt", "https://api.gapgpt.app/v1", "max_tokens"),
         ):
             with self.subTest(provider=provider):
                 self.provider.settings = replace(self.settings, provider=provider)
@@ -169,6 +171,8 @@ class ProviderContracts(unittest.TestCase):
             ("openai", "https://api.openai.com/v1"),
             ("google", "https://generativelanguage.googleapis.com/v1beta/openai"),
             ("openrouter", "https://openrouter.ai/api/v1"),
+            ("avalai", "https://api.avalai.ir/v1"),
+            ("gapgpt", "https://api.gapgpt.app/v1"),
         ):
             with self.subTest(provider=provider):
                 self.provider.settings = replace(self.settings, provider=provider)
@@ -181,6 +185,81 @@ class ProviderContracts(unittest.TestCase):
                 self.assertEqual(post.call_args.args[0], base + "/embeddings")
                 self.assertEqual(
                     post.call_args.kwargs["json"]["model"], "synthetic-embedding"
+                )
+                self.assertEqual(
+                    post.call_args.kwargs["headers"]["Authorization"],
+                    "Bearer synthetic-chat-key",
+                )
+
+    def test_iranian_gateway_tools_round_trip_uses_gateway_and_redacts_text(self):
+        tool = {
+            "type": "function",
+            "function": {
+                "name": "get_statistics",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        }
+        reply = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{
+                "id": "synthetic-tool-call",
+                "type": "function",
+                "function": {"name": "get_statistics", "arguments": "{}"},
+            }],
+        }
+        for provider, base in (
+            ("avalai", "https://api.avalai.ir/v1"),
+            ("gapgpt", "https://api.gapgpt.app/v1"),
+        ):
+            with self.subTest(provider=provider):
+                self.provider.settings = replace(self.settings, provider=provider)
+                with self.transport(response(reply)) as post:
+                    result = self.provider.complete(
+                        [{"role": "user", "content": "ali@example.org"}],
+                        tools=[tool],
+                    )
+                self.assertEqual(result, reply)
+                self.assertEqual(post.call_args.args[0], base + "/chat/completions")
+                sent = post.call_args.kwargs["json"]
+                self.assertEqual(sent["tools"], [tool])
+                self.assertEqual(sent["tool_choice"], "auto")
+                self.assertNotIn("response_format", sent)
+                self.assertNotIn("ali@example.org", json.dumps(sent))
+                with self.transport(response()) as post:
+                    self.provider.complete([
+                        result,
+                        {"role": "tool", "tool_call_id": "synthetic-tool-call",
+                         "content": '{"count":2,"email":"ali@example.org"}'},
+                    ], tools=[tool])
+                sent = post.call_args.kwargs["json"]
+                self.assertEqual(sent["messages"][0]["tool_calls"], reply["tool_calls"])
+                self.assertNotIn("ali@example.org", json.dumps(sent))
+
+    def test_iranian_embedding_provider_does_not_receive_the_other_gateways_key(self):
+        for chat, embedding, base in (
+            ("avalai", "gapgpt", "https://api.gapgpt.app/v1"),
+            ("gapgpt", "avalai", "https://api.avalai.ir/v1"),
+        ):
+            with self.subTest(chat=chat, embedding=embedding):
+                self.provider.settings = replace(
+                    self.settings, provider=chat, embedding_provider=embedding,
+                )
+                self.assertFalse(self.provider.settings.embedding_configured)
+                with self.transport({}) as post:
+                    self.assertIsNone(self.provider.embed("synthetic isolated input"))
+                post.assert_not_called()
+                self.provider.settings = replace(
+                    self.provider.settings, embedding_api_key="synthetic-embedding-only-key",
+                )
+                with self.transport({"data": [{"embedding": [0.25, 0.5]}]}) as post:
+                    self.assertEqual(
+                        self.provider.embed("synthetic isolated input"), [0.25, 0.5]
+                    )
+                self.assertEqual(post.call_args.args[0], base + "/embeddings")
+                self.assertEqual(
+                    post.call_args.kwargs["headers"]["Authorization"],
+                    "Bearer synthetic-embedding-only-key",
                 )
 
     def test_embedding_can_use_a_separate_provider_and_key_without_chat(self):
@@ -221,6 +300,8 @@ class ProviderContracts(unittest.TestCase):
         changes = [
             {},
             {"provider": "google"},
+            {"provider": "avalai"},
+            {"provider": "gapgpt"},
             {"provider": "custom", "api_base_url": "https://other.example/v1"},
             {"embedding_model": "other-embedding"},
             {"api_key": "synthetic-new-account"},

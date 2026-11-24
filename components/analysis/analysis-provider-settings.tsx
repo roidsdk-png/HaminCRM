@@ -13,7 +13,13 @@ import {
   selectClass,
 } from './analysis-primitives';
 
-type ProviderId = 'openai' | 'google' | 'openrouter' | 'custom';
+type ProviderId =
+  | 'openai'
+  | 'google'
+  | 'openrouter'
+  | 'avalai'
+  | 'gapgpt'
+  | 'custom';
 type ProviderOption = { id: ProviderId; label: string; defaultBaseUrl: string };
 type ProviderConfiguration = {
   provider: ProviderId;
@@ -51,6 +57,16 @@ const defaultOptions: ProviderOption[] = [
     id: 'openrouter',
     label: 'OpenRouter',
     defaultBaseUrl: 'https://openrouter.ai/api/v1',
+  },
+  {
+    id: 'avalai',
+    label: 'AvalAI / اول ای‌آی',
+    defaultBaseUrl: 'https://api.avalai.ir/v1',
+  },
+  {
+    id: 'gapgpt',
+    label: 'GapGPT / گپ جی‌پی‌تی',
+    defaultBaseUrl: 'https://api.gapgpt.app/v1',
   },
   { id: 'custom', label: 'نشانی سفارشی سازگار با OpenAI', defaultBaseUrl: '' },
 ];

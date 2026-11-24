@@ -80,7 +80,9 @@ class ProviderConfigurationAcceptance(unittest.TestCase):
         self.assertIn("apiKeyConfigured", value)
         self.assertFalse(value["apiKeyConfigured"])
         choices = {provider["id"] for provider in value["chatProviders"]}
-        self.assertTrue({"openai", "google", "openrouter", "custom"} <= choices)
+        self.assertTrue(
+            {"openai", "google", "openrouter", "avalai", "gapgpt", "custom"} <= choices
+        )
         self.assertFalse(self.path.exists())
 
     def test_draft_provider_can_be_saved_without_any_key(self):
@@ -88,6 +90,68 @@ class ProviderConfigurationAcceptance(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(self.public()["provider"], "google")
         self.assertFalse(self.configuration()["modelConfigured"])
+
+    def test_iranian_gateway_configuration_is_private_persistent_and_uses_its_preset(self):
+        for provider, base in (
+            ("avalai", "https://api.avalai.ir/v1"),
+            ("gapgpt", "https://api.gapgpt.app/v1"),
+        ):
+            with self.subTest(provider=provider):
+                secret = "synthetic-" + provider + "-private-key"
+                response = self.save(
+                    provider=provider, model="synthetic-gateway-model", apiKey=secret,
+                    embeddingModel="synthetic-gateway-embedding", embeddingProvider="",
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                public = self.public()
+                self.assertEqual(public["provider"], provider)
+                self.assertEqual(public["effectiveApiBaseUrl"], base)
+                self.assertEqual(public["effectiveEmbeddingApiBaseUrl"], base)
+                self.assertTrue(public["modelConfigured"])
+                self.assertTrue(public["embeddingConfigured"])
+                self.assertNotIn(secret, json.dumps(public))
+                with TestClient(create_app(self.settings)) as second:
+                    restored = second.get("/v1/provider-settings", headers=self.headers)
+                    self.assertEqual(restored.status_code, 200, restored.text)
+                    self.assertEqual(restored.json()["provider"], provider)
+                    self.assertEqual(restored.json()["effectiveApiBaseUrl"], base)
+                    self.assertTrue(restored.json()["apiKeyConfigured"])
+                    self.assertNotIn(secret, restored.text)
+
+    def test_switching_between_iranian_gateways_requires_replacement_or_explicit_clear(self):
+        first = "synthetic-avalai-private-key"
+        self.assertEqual(self.save(
+            provider="avalai", model="synthetic-model", apiKey=first,
+        ).status_code, 200)
+        rejected = self.save(provider="gapgpt", model="synthetic-model")
+        self.assertEqual(rejected.status_code, 400)
+        self.assertEqual(rejected.json()["error"]["code"], "key_reentry_required")
+        self.assertEqual(self.public()["provider"], "avalai")
+        self.assertNotIn(first, rejected.text)
+        second = "synthetic-gapgpt-private-key"
+        accepted = self.save(provider="gapgpt", apiKey=second)
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertEqual(self.app.state.service.provider.settings.api_key, second)
+        cleared = self.save(provider="avalai", clearApiKey=True)
+        self.assertEqual(cleared.status_code, 200, cleared.text)
+        self.assertEqual(self.public()["provider"], "avalai")
+        self.assertFalse(self.public()["apiKeyConfigured"])
+        self.assertNotIn(second, json.dumps(self.public()))
+
+    def test_iranian_presets_cannot_send_credentials_to_a_different_gateway(self):
+        for provider, wrong_base in (
+            ("avalai", "https://api.gapgpt.app/v1"),
+            ("gapgpt", "https://api.avalai.ir/v1"),
+        ):
+            with self.subTest(provider=provider):
+                response = self.save(
+                    provider=provider, apiBaseUrl=wrong_base,
+                    apiKey="synthetic-private-key", model="synthetic-model",
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json()["error"]["code"], "provider_url_mismatch")
+                self.assertNotIn("synthetic-private-key", response.text)
+        self.assertFalse(self.path.exists())
 
     def test_secret_is_not_returned_and_private_configuration_survives_restart(self):
         secret = self.seed_key()

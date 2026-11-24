@@ -286,12 +286,12 @@ export function AnalysisWorkspace({
               {canConfigure && (
                 <details className="mt-3">
                   <summary className="cursor-pointer text-xs font-semibold text-primary">
-                    راهنمای اتصال در محیط محلی
+                    راهنمای اتصال مدل
                   </summary>
                   <p className="mt-3 text-xs leading-7 text-muted-foreground">
                     در زبانهٔ «منابع و تنظیمات»، ارائه‌دهنده، شناسهٔ مدل و کلید API
-                    را ثبت کنید. انتخاب OpenAI، Google AI Studio، OpenRouter و
-                    سرویس سفارشی در دسترس است.
+                    را ثبت کنید. انتخاب OpenAI، Google AI Studio، OpenRouter،
+                    AvalAI، GapGPT و سرویس سفارشی در دسترس است.
                   </p>
                   <Button
                     variant="outline"

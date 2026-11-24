@@ -43,7 +43,7 @@ class Provider:
             else settings.resolved_api_base_url
         )
         key = settings.effective_embedding_api_key if embedding else settings.api_key
-        if provider not in {"openai", "google", "openrouter", "custom"}:
+        if provider not in PROVIDER_PRESETS:
             raise AnalyticsError(
                 "invalid_provider_configuration", "ارائه‌دهندهٔ مدل معتبر نیست.", 422
             )
